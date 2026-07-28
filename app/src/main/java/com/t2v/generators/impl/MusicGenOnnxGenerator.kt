@@ -258,8 +258,16 @@ class MusicGenOnnxGenerator(
             env, java.nio.LongBuffer.wrap(encoderAttn),
             longArrayOf(1L, encoderSeq.toLong())
         )
+        // encoderHidden: (1, encoderSeq, 768) -> flatten into FloatBuffer
+        val encoderHiddenFlat = java.nio.FloatBuffer.allocate(encoderSeq * 768)
+        for (i in 0 until encoderSeq) {
+            for (j in 0 until 768) {
+                encoderHiddenFlat.put(encoderHidden[i][j])
+            }
+        }
+        encoderHiddenFlat.rewind()
         val encoderHiddenTensor = OnnxTensor.createTensor(
-            env, encoderHidden,
+            env, encoderHiddenFlat,
             longArrayOf(1L, encoderSeq.toLong(), 768L)
         )
 
@@ -268,26 +276,47 @@ class MusicGenOnnxGenerator(
             "encoder_attention_mask" to encoderAttnTensor,
             "encoder_hidden_states" to encoderHiddenTensor,
         )
-        // Add past_kv: present_{i}.decoder/encoder.{key,value} -> shape (1, heads, past_len, head_dim)
+        // Add past_kv: shape (1, numHeads, pastLen, headDim)
+        // pastKv["..."] is Array<Array<Array<FloatArray>>>: (1, numHeads, pastLen, headDim)
+        // We need to convert pastKv["..."][0] (shape: numHeads, pastLen, headDim) into FloatBuffer
         for (i in 0 until numLayers) {
             for (kind in arrayOf("key", "value")) {
-                val past = pastKv["past_key_values.$i.decoder.$kind"]
-                    ?: pastKv["past_key_values.$i.encoder.$kind"]!!
-                val name = "past_key_values.$i.decoder.$kind"
-                val t = OnnxTensor.createTensor(
-                    env, past[0],
-                    longArrayOf(1L, numHeads.toLong(),
-                        (past[0][0].size).toLong(), headDim.toLong())
-                )
-                feed[name] = t
-                val pastEnc = pastKv["past_key_values.$i.encoder.$kind"]!!
-                val nameEnc = "past_key_values.$i.encoder.$kind"
-                val tEnc = OnnxTensor.createTensor(
-                    env, pastEnc[0],
-                    longArrayOf(1L, numHeads.toLong(),
-                        (pastEnc[0][0].size).toLong(), headDim.toLong())
-                )
-                feed[nameEnc] = tEnc
+                val pastDec = pastKv["past_key_values.$i.decoder.$kind"]
+                if (pastDec != null) {
+                    val h = pastDec[0].size           // numHeads
+                    val l = pastDec[0][0].size        // pastLen
+                    val buf = java.nio.FloatBuffer.allocate(h * l * headDim)
+                    for (hi in 0 until h) {
+                        for (li in 0 until l) {
+                            for (di in 0 until headDim) {
+                                buf.put(pastDec[0][hi][li][di])
+                            }
+                        }
+                    }
+                    buf.rewind()
+                    feed["past_key_values.$i.decoder.$kind"] = OnnxTensor.createTensor(
+                        env, buf,
+                        longArrayOf(1L, h.toLong(), l.toLong(), headDim.toLong())
+                    )
+                }
+                val pastEnc = pastKv["past_key_values.$i.encoder.$kind"]
+                if (pastEnc != null) {
+                    val h = pastEnc[0].size
+                    val l = pastEnc[0][0].size
+                    val buf = java.nio.FloatBuffer.allocate(h * l * headDim)
+                    for (hi in 0 until h) {
+                        for (li in 0 until l) {
+                            for (di in 0 until headDim) {
+                                buf.put(pastEnc[0][hi][li][di])
+                            }
+                        }
+                    }
+                    buf.rewind()
+                    feed["past_key_values.$i.encoder.$kind"] = OnnxTensor.createTensor(
+                        env, buf,
+                        longArrayOf(1L, h.toLong(), l.toLong(), headDim.toLong())
+                    )
+                }
             }
         }
 
