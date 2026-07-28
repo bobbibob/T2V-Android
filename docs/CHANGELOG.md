@@ -219,3 +219,41 @@
   music / sound.
 - `docs/AI_HANDOFF.md` (обновлено, секция «Каталог моделей 2026-07-28»)
 - `STATUS.md` (обновлено, текущая итерация и план)
+
+## [Unreleased] - 2026-07-28 (MIDI Renderer)
+
+### Added
+
+- **Полноценный MIDI-стек** в `core/midi/` (новый package):
+  - `MidiEvents.kt` — sealed hierarchy: NoteOn, NoteOff, InstrumentChange, TempoChange, TimeShift
+  - `StandardMidiFileParser.kt` — читает SMF format 0/1 (для будущего TinyMusician .mid output)
+  - `TinyMusicianMidiDecoder.kt` — декодирует токены TinyMusician (TEA-like) + `fallbackFromPrompt()`
+  - `MidiRenderer.kt` + `Synthesiser` — 16-bit PCM через синусоидальный синтез (16 GM-семейств)
+  - `synth/DrumKit.kt` — 14 GM drum-типов (kick, snare, hihat, crash, ride, cowbell, bongo, conga) параметрически
+  - `sf2/SoundFont.kt`, `sf2/SoundFontParser.kt`, `sf2/SoundFontRenderer.kt` — SoundFont 2.x парсер + sample playback
+- `TinyMusicianMusicGenerator` теперь использует `MidiRenderer` (sine) вместо `ProceduralAudioSynth`
+- `TinyMusicianSfxGenerator` генерирует 1-3 сек фразы через `DrumKit`
+- **4 JVM unit-теста** в `core/midi/TinyMusicianMidiDecoderTest`:
+  - `fallback from prompt with epic keyword returns minor progression`
+  - `fallback from prompt with happy keyword returns major progression`
+  - `fallback from prompt with calm keyword returns ambient progression`
+  - `decoded token sequence produces NoteOn and NoteOff events`
+  - `renderSine with empty sequence produces non-empty PCM` (silence)
+  - `renderSine with one note produces non-zero PCM`
+  - `renderSine with drum channel uses DrumKit`
+  - `parses a minimal one-track MIDI file with one note`
+- `docs/MIDI_RENDERER.md` — полная документация по стеку
+
+### Architecture
+
+- `core/midi/` — pure-Kotlin, без Android-зависимостей (кроме `kotlin.math`)
+- `Synthesiser` различает 16 семейств GM-инструментов (piano, organ, guitar, bass,
+  strings, brass, reed, pipe, synth lead/pad/effects, ethnic, perc, SFX)
+- `DrumKit` — параметрический синтез (без сэмплов), работает в 0 МБ
+- `SoundFontRenderer` — sample-based (когда скачается GeneralUser GS)
+
+### Следующее
+
+- Реальный TinyMusician ONNX (ждём экспорт от asigalov61 / community)
+- `tools/export_tinymusician_onnx.py` (отдельный PR)
+- Включить SoundFontRenderer в TinyMusicianMusicGenerator когда SoundFont скачан
