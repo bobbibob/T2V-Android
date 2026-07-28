@@ -1,0 +1,107 @@
+# Текущий статус
+
+**Дата обновления:** 2026-07-28
+**Ветка:** `codex/models-download` (последний зелёный CI 30338815715, head `984e208a`)
+**Стабильная база:** `codex/audio-production` (последний зелёный CI 30328757706, head `8fc42a0`)
+**APK:** ~44 МБ, скачивается через `gh run download` + curl workaround
+**Тесты:** зелёные (`30338815715` — `test` + `build` оба success)
+**Устройство для проверки:** `R5CN30LJS4W` (Samsung, ADB, разблокировано)
+
+## Что лежит на полке
+
+```
+✅ Сделано (verified end-to-end на устройстве):
+- Локальный Kokoro 82M через sherpa-onnx (audiobook #2 = completed, 154 сек)
+- <music>/<sfx> XML-теги в тексте → AudioClipEntity в Room (audiobook #2)
+- 3-track editor (VOICE / MUSIC / SOUND) с FFmpeg + LAME для MP3
+- 15 языков Piper/VITS (Русский, English, German, French, Spanish,
+  Italian, Chinese, Japanese, Hindi, Bengali, Arabic, Korean)
+- 11 локализаций strings.xml
+- Self-test кнопка в Settings (🧪 Run <music>/<sfx> self-test)
+- DownloadableModelCard — единая UI-карточка скачивания
+- GenerationModelCatalog — единый типизированный каталог
+- TagDocs Info dialog на каждой model/generator/engine карточке
+- Тесты: writeSilence, pause ms/s, clean, currencies, Num2Words — все зелёные
+- Документация: 24 файла в docs/
+
+❌ Не готово / отложено (без подписки):
+- Реальная AI-генерация музыки (MusicGen через ONNX) — следующий в очереди
+- sherpa-onnx TTS с клонированием голоса
+- Авто-открытие AudioEditor после генерации с тегами
+- Фикс Kokoro зависания на >3к символов
+- Фикс AudioTagInserter.positionFor (timelineStartMs=0)
+- Починка ElevenLabs clone UI
+- Визуальный waveform-timeline (drag/trim/split)
+- Voice gallery sync через GitHub
+
+🚫 Не будет (по решению владельца):
+- Подписка / монетизация (отложена до полной доделки приложения)
+- Google Play Billing, Firebase Auth, AAB-релиз
+- Модели в APK / Asset Packs (пользователь скачивает сам)
+- Серверные TTS-движки / engine-host
+- Faster Whisper на устройстве
+- Встроенный Python / MCP / HTTP-сервер
+- iOS-версия
+```
+
+## Что делаем прямо сейчас
+
+**Цель:** доделать приложение до v0.3.0 (полная функциональность) **до** того,
+как принимать решения по подписке/публикации.
+
+**Текущая сессия (2026-07-28):**
+
+| # | Задача | Статус | Комментарий |
+|---|---|---|---|
+| 3 | Вернуть скачивание моделей | ✅ Сделано | `DownloadableModelCard` в `codex/models-download` |
+| 1 | MusicGen через ONNX | 📋 Следующий | Кандидаты: `wide-video/musicgen-small-v1.0.0` (int8 ~422 МБ) |
+| 2 | sherpa-onnx клонирование | 📋 Очередь | sherpa-onnx runtime подключён, нужна модель + UI |
+| — | Авто-открытие AudioEditor | 📋 Очередь | `GenerationPipeline.Progress.audioTagClips` уже считается |
+| — | Фикс Kokoro зависания | 📋 Очередь | Возможно таймаут на `engine.synthesize()` |
+| — | Фикс `AudioTagInserter.positionFor` | 📋 Очередь | Перенести `insert()` после цикла voice-сегментов |
+
+## Следующие шаги (после MusicGen)
+
+### Фаза — доделка приложения
+- Visual waveform timeline
+- ElevenLabs clone fix
+- Voice gallery sync
+- Tablet-адаптация
+- Material You dynamic colors
+
+### Потом — подписка и публикация
+- Google Play Billing Library v7+ + server-side verification
+- Firebase Auth / Google Sign-In
+- AAB build + signing + R8
+- Privacy Policy URL (GitHub Pages)
+- Data Safety form в Play Console
+- Paywall screen
+
+## Полезные однострочники
+
+```bash
+# Снимок БД
+adb -s R5CN30LJS4W exec-out run-as com.t2v.debug sh -c \
+  "cat databases/t2v.db databases/t2v.db-wal databases/t2v.db-shm" > /tmp/t2v.db
+sqlite3 /tmp/t2v.db "PRAGMA wal_checkpoint(FULL);"
+
+# Скачать APK последнего зелёного CI (workaround для прерванного download)
+gh run list --workflow android.yml --branch codex/models-download --limit 1 \
+  --json databaseId,conclusion | jq -r '.[] | select(.conclusion=="success") | .databaseId'
+# (затем: gh api ... artifacts, curl -L -C - -o ...)
+
+# Проверить Kokoro файлы
+adb -s R5CN30LJS4W shell 'run-as com.t2v.debug ls files/models/'
+
+# Установить APK
+adb -s R5CN30LJS4W install -r /path/to/app-debug.apk
+```
+
+## Чего точно не будет (на ближайшее время)
+
+- ❌ Подписка / монетизация
+- ❌ Локальные Chatterbox / Qwen3 / OmniVoice (только через remote host)
+- ❌ Встроенный Python / MCP-сервер
+- ❌ Faster Whisper на устройстве
+- ❌ Публикация в Google Play (сейчас — APK через GitHub)
+- ❌ Модели в APK (пользователь скачивает сам, на выбор)

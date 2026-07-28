@@ -1,0 +1,152 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Install Android NDK
+        run: sdkmanager --install "ndk;27.2.12479018"
+      - name: Restore verified FFmpeg executable
+        uses: actions/cache@v4
+        with:
+          path: app/src/main/jniLibs/arm64-v8a/libffmpeg_exec.so
+          key: ffmpeg-android-arm64-n7.1.1-${{ hashFiles('tools/build_ffmpeg_android.sh') }}
+      - name: Build FFmpeg for Android
+        if: hashFiles('app/src/main/jniLibs/arm64-v8a/libffmpeg_exec.so') == ''
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.2.12479018
+        run: bash tools/build_ffmpeg_android.sh
+      - name: Verify FFmpeg executable
+        run: |
+          test -s app/src/main/jniLibs/arm64-v8a/libffmpeg_exec.so
+          file app/src/main/jniLibs/arm64-v8a/libffmpeg_exec.so
+      - name: Upload FFmpeg executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-android-arm64
+          path: app/src/main/jniLibs/arm64-v8a/libffmpeg_exec.so
+      - name: Restore sherpa-onnx Android runtime
+        uses: actions/cache@v4
+        with:
+          path: |
+            app/src/main/jniLibs/arm64-v8a/libsherpa-onnx-jni.so
+            app/src/main/jniLibs/arm64-v8a/libsherpa-onnx-c-api.so
+            app/src/main/jniLibs/arm64-v8a/libsherpa-onnx-cxx-api.so
+            app/src/main/jniLibs/arm64-v8a/libonnxruntime.so
+          key: sherpa-onnx-android-arm64-v1.13.4
+      - name: Prepare sherpa-onnx Android runtime
+        if: hashFiles('app/src/main/jniLibs/arm64-v8a/libsherpa-onnx-jni.so') == ''
+        run: bash tools/prepare_sherpa_onnx_android.sh
+      - name: Upload sherpa-onnx Android runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: sherpa-onnx-android-arm64
+          path: |
+            app/src/main/jniLibs/arm64-v8a/libsherpa-onnx-jni.so
+            app/src/main/jniLibs/arm64-v8a/libsherpa-onnx-c-api.so
+            app/src/main/jniLibs/arm64-v8a/libsherpa-onnx-cxx-api.so
+            app/src/main/jniLibs/arm64-v8a/libonnxruntime.so
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: app/build/reports/tests/
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Download verified FFmpeg executable
+        uses: actions/download-artifact@v4
+        with:
+          name: ffmpeg-android-arm64
+          path: app/src/main/jniLibs/arm64-v8a
+      - name: Download sherpa-onnx Android runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: sherpa-onnx-android-arm64
+          path: app/src/main/jniLibs/arm64-v8a
+      - name: Restore persistent debug signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: t2v-debug-signing-v1
+      - name: Create debug signing key on first run
+        run: |
+          mkdir -p ~/.android
+          if [ ! -s ~/.android/debug.keystore ]; then
+            keytool -genkeypair \
+              -keystore ~/.android/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=T2V,C=US"
+          fi
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      - name: Verify persistent debug signing key
+        run: test -s ~/.android/debug.keystore
+      - name: Verify APK uses persistent signing key
+        run: |
+          key_sha="$(
+            keytool -list -v \
+              -keystore ~/.android/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey |
+              sed -n 's/.*SHA256: //p' |
+              tr -d ':' |
+              tr 'A-F' 'a-f'
+          )"
+          apk_sha="$(
+            "$ANDROID_HOME/build-tools/34.0.0/apksigner" \
+              verify --print-certs app/build/outputs/apk/debug/app-debug.apk |
+              sed -n 's/Signer #1 certificate SHA-256 digest: //p'
+          )"
+          test -n "$key_sha"
+          test "$apk_sha" = "$key_sha"
+      - name: Verify FFmpeg is packaged
+        run: unzip -l app/build/outputs/apk/debug/app-debug.apk | grep 'lib/arm64-v8a/libffmpeg_exec.so'
+      - name: Verify local TTS runtime is packaged
+        run: |
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep 'lib/arm64-v8a/libsherpa-onnx-jni.so'
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep 'lib/arm64-v8a/libonnxruntime.so'
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: app/build/outputs/logs/

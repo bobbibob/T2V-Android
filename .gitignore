@@ -1,0 +1,53 @@
+# Build / IDE
+build/
+.gradle/
+.idea/
+*.iml
+.kotlin/
+local.properties
+*.apk
+*.aab
+captures/
+.cxx/
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+release/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Output
+output/
+artifacts/
+*.mp3
+# Bundled placeholders for music/sound are checked in.
+*.wav
+!app/src/main/assets/music/*.wav
+!app/src/main/assets/sound/*.wav
+*.srt
+*.ass
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Models (large files)
+app/src/main/assets/voices/kokoro/*.onnx
+app/src/main/assets/voices/kokoro/*.bin
+app/src/main/jniLibs/

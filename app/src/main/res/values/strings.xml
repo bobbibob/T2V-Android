@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">T2V</string>
+
+    <!-- Главное меню -->
+    <string name="nav_editor">Editor</string>
+    <string name="nav_generation">Generation</string>
+    <string name="nav_review">Review</string>
+    <string name="nav_music">Music Mix</string>
+    <string name="nav_voices">Voices</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_projects">Projects</string>
+    <string name="nav_models">Models</string>
+    <string name="onboarding_title">How will you generate speech?</string>
+    <string name="onboarding_local">Use local models</string>
+    <string name="onboarding_local_hint">Download and run compatible models on this device.</string>
+    <string name="onboarding_cloud">Use cloud services</string>
+    <string name="onboarding_cloud_hint">Connect OpenAI, ElevenLabs, Gemini, Azure or a custom API.</string>
+    <string name="settings_tts_mode">Generation mode</string>
+    <string name="settings_models_folder">Models folder</string>
+    <string name="settings_choose_folder">Choose models folder</string>
+    <string name="settings_default_folder">App private storage</string>
+
+    <!-- Editor -->
+    <string name="editor_placeholder">Paste or import text here…</string>
+    <string name="editor_import">Import</string>
+    <string name="editor_import_txt">Plain text (.txt)</string>
+    <string name="editor_import_md">Markdown (.md)</string>
+    <string name="editor_import_docx">Word document (.docx)</string>
+    <string name="editor_normalize">Normalize</string>
+    <string name="editor_split_safe">Safe chunks</string>
+    <string name="editor_split_sentence">Sentence-aware</string>
+    <string name="editor_split_paragraph">By paragraphs</string>
+
+    <!-- Markup toolbar -->
+    <string name="markup_pause">Pause</string>
+    <string name="markup_voice">Voice</string>
+    <string name="markup_lang">Lang</string>
+    <string name="markup_speed">Speed</string>
+    <string name="markup_volume">Volume</string>
+    <string name="markup_chapter">Chapter</string>
+    <string name="markup_pitch">Pitch</string>
+
+    <!-- Generation -->
+    <string name="gen_start">Generate</string>
+    <string name="gen_pause">Pause</string>
+    <string name="gen_resume">Resume</string>
+    <string name="gen_cancel">Cancel</string>
+    <string name="gen_retry">Retry</string>
+    <string name="gen_engine">Engine</string>
+    <string name="gen_voice">Voice</string>
+    <string name="gen_speed">Speed</string>
+    <string name="gen_export">Export</string>
+    <string name="gen_progress">Generating…</string>
+    <string name="gen_done">Done</string>
+
+    <!-- Engines -->
+    <string name="engine_kokoro">Kokoro (on-device)</string>
+    <string name="engine_openai">OpenAI TTS</string>
+    <string name="engine_elevenlabs">ElevenLabs</string>
+    <string name="engine_gemini">Google Gemini TTS</string>
+    <string name="engine_azure">Azure Speech</string>
+    <string name="engine_custom_http">Custom HTTP</string>
+
+    <!-- Music mix -->
+    <string name="mix_title">Audio Mix</string>
+    <string name="mix_voice_track">Voice track</string>
+    <string name="mix_music_track">Background music</string>
+    <string name="mix_volume">Volume</string>
+    <string name="mix_fade_in">Fade in</string>
+    <string name="mix_fade_out">Fade out</string>
+    <string name="mix_ducking">Music ducking</string>
+    <string name="mix_render">Render mix</string>
+
+    <!-- Review -->
+    <string name="review_title">Generation review</string>
+    <string name="review_transcript">Transcript</string>
+    <string name="review_similarity">Similarity</string>
+    <string name="review_tail">Tail analysis</string>
+    <string name="review_cut_tail">Cut tail</string>
+    <string name="review_regenerate">Regenerate segment</string>
+
+    <!-- Settings -->
+    <string name="settings_general">General</string>
+    <string name="settings_engines">TTS engines</string>
+    <string name="settings_voice_gallery">Voice gallery</string>
+    <string name="settings_normalization">Text normalization</string>
+    <string name="settings_about">About</string>
+    <string name="settings_language">Interface language</string>
+    <string name="settings_output_dir">Output directory</string>
+    <string name="settings_pause_between_blocks">Pause between blocks (ms)</string>
+    <string name="settings_pause_between_chapters">Pause between chapters (ms)</string>
+    <string name="settings_paragraph_pause_min">Paragraph pause min (ms)</string>
+    <string name="settings_paragraph_pause_max">Paragraph pause max (ms)</string>
+    <string name="settings_chunk_size">Safe chunk size</string>
+    <string name="settings_markup_toolbar">Show markup toolbar</string>
+    <string name="settings_syntax_highlight">Editor syntax highlighting</string>
+
+    <!-- Common -->
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_ok">OK</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_share">Share</string>
+    <string name="action_open">Open</string>
+    <string name="action_install">Install</string>
+    <string name="action_uninstall">Uninstall</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_apply">Apply</string>
+    <string name="action_reset">Reset</string>
+    <string name="action_back">Back</string>
+    <string name="action_next">Next</string>
+    <string name="action_play">Play</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_stop">Stop</string>
+
+    <!-- Errors -->
+    <string name="error_no_engine">No TTS engine selected</string>
+    <string name="error_engine_not_installed">Engine not installed</string>
+    <string name="error_api_key_missing">API key is not set</string>
+    <string name="error_network">Network error: %1$s</string>
+    <string name="error_invalid_markup">Invalid markup at line %1$d: %2$s</string>
+    <string name="error_cancelled">Cancelled</string>
+
+    <!-- Status / progress -->
+    <string name="status_idle">Idle</string>
+    <string name="status_loading_model">Loading model…</string>
+    <string name="status_generating">Generating segment %1$d of %2$d</string>
+    <string name="status_exporting">Exporting…</string>
+    <string name="status_mixing">Mixing audio…</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_failed">Failed: %1$s</string>
+
+    <string name="settings_manage_models">Manage TTS Models...</string>
+    <string name="models_server_connected">✓ Engine host connected</string>
+    <string name="models_server_disconnected">✗ Engine host not reachable</string>
+    <string name="models_refresh">Refresh</string>
+    <string name="models_installed">Installed</string>
+    <string name="models_available">Available</string>
+    <string name="models_download">Download</string>
+    <string name="models_select">Select</string>
+    <string name="models_delete">Delete</string>
+    <string name="models_active">✓ Active</string>
+    <string name="models_unknown_engine">Unknown engine</string>
+    <string name="models_hf_token_required">Set HF_TOKEN env var for private repos</string>
+    <string name="models_hf_search">Search Hugging Face TTS models</string>
+    <string name="models_hf_repo">Repository ID, for example owner/model</string>
+    <string name="models_hf_search_action">Search</string>
+    <string name="models_hf_open_repo">Open repository</string>
+    <string name="models_cancel_download">Cancel download</string>
+    <string name="info_title">Engine information</string>
+    <string name="info_supported">Supported tags</string>
+    <string name="info_partial">Partial / approximated</string>
+    <string name="info_ignored">Ignored</string>
+    <string name="info_examples">Examples</string>
+    <string name="info_prompt_help">Prompt help</string>
+    <string name="info_no_docs">No expressive markup documented for this engine yet.</string>
+    <string name="info_close">Close</string>
+    <string name="info_runtime">Runtime</string>
+    <string name="info_repository">Repository</string>
+    <string name="info_license">License</string>
+    <string name="info_category_local">On-device</string>
+    <string name="info_category_cloud">Cloud</string>
+    <string name="info_open">Engine information</string>
+    <string name="markup_music">Music</string>
+    <string name="markup_sfx">SFX</string>
+    <string name="voices_pick_local">Pick local voice (Piper / SherpaOnnx)</string>
+    <string name="voices_clone_cloud">Clone voice (ElevenLabs / cloud)</string>
+    <string name="voices_my_voice">✓ My voice</string>
+    <string name="voices_my_voice_change">Change</string>
+    <string name="voices_local_dialog_title">Local voice</string>
+    <string name="voices_local_dialog_close">Close</string>
+    <string name="settings_debug">Debug</string>
+    <string name="settings_debug_selftest_help">Appends &lt;music&gt; and &lt;sfx&gt; tags to the most recent project and runs generation. Verifies audio_tracks and audio_clips in the DB.</string>
+    <string name="settings_debug_selftest">🧪 Run &lt;music&gt;/&lt;sfx&gt; self-test</string>
+    <string name="models_download_button">Download</string>
+</resources>
