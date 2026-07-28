@@ -450,24 +450,28 @@ object GenerationModelCatalog {
         ),
         Entry(
             id = "musicgen-small",
-            title = "MusicGen Small (Meta Audiocraft)",
+            title = "MusicGen Small (Meta Audiocraft, on-device stub)",
             categories = setOf(Category.Music),
             capabilities = setOf(Capability.MusicGeneration),
             requirements = Requirements(
-                minimumRamMb = 2_048,
+                minimumRamMb = 4_096,
                 runtime = Runtime.SherpaOnnx,
                 runtimeBundled = true,
             ),
             tags = STABLE_AUDIO_TAGS,
             support = Support.RuntimeInDevelopment,
-            approximateDownloadBytes = 600_000_000L,
+            approximateDownloadBytes = 3_700_000_000L,
             license = "CC-BY-NC-4.0 (Meta MusicGen)",
-            repository = "wide-video/musicgen-small-v1.0.0",
+            repository = "chinedudave06/musicgen-small-onnx",
             revision = null,
-            notes = "MusicGen encoder-decoder transformer. Real ONNX export on Android " +
-                "is not yet viable: the autoregressive decoder produces one token at a time. " +
-                "Currently falls back to ProceduralAudioSynth so the <music> tag still produces audio. " +
-                "Replace this stub with a real LiteRT/TFLite export once the community ships one.",
+            notes = "MusicGen Small ONNX export exists at chinedudave06/musicgen-small-onnx " +
+                "(decoder 1.69 GB + decoder_with_past 1.49 GB + text_encoder 439 MB + encodec_decode 118 MB = ~3.7 GB). " +
+                "The autoregressive decoder produces one audio token at a time; on a mid-range phone " +
+                "a single 5-second clip takes minutes. The T2V generator (MusicGenMusicGenerator) " +
+                "therefore falls back to ProceduralAudioSynth. Real MusicGen inference is not " +
+                "viable on Android in 2026 — users who want real AI music should select the ElevenLabs " +
+                "or OpenAI cloud entry, or run the model on a server. The entry remains in the " +
+                "catalog for users who want to track when the community ships a smaller / faster variant.",
         ),
         Entry(
             id = "nsynth-wavenet",
