@@ -449,6 +449,27 @@ object GenerationModelCatalog {
             notes = "Procedural SFX synthesis; no download; up to 5 seconds",
         ),
         Entry(
+            id = "musicgen-small",
+            title = "MusicGen Small (Meta Audiocraft)",
+            categories = setOf(Category.Music),
+            capabilities = setOf(Capability.MusicGeneration),
+            requirements = Requirements(
+                minimumRamMb = 2_048,
+                runtime = Runtime.SherpaOnnx,
+                runtimeBundled = true,
+            ),
+            tags = STABLE_AUDIO_TAGS,
+            support = Support.RuntimeInDevelopment,
+            approximateDownloadBytes = 600_000_000L,
+            license = "CC-BY-NC-4.0 (Meta MusicGen)",
+            repository = "wide-video/musicgen-small-v1.0.0",
+            revision = null,
+            notes = "MusicGen encoder-decoder transformer. Real ONNX export on Android " +
+                "is not yet viable: the autoregressive decoder produces one token at a time. " +
+                "Currently falls back to ProceduralAudioSynth so the <music> tag still produces audio. " +
+                "Replace this stub with a real LiteRT/TFLite export once the community ships one.",
+        ),
+        Entry(
             id = "nsynth-wavenet",
             title = "Magenta NSynth (on-device LiteRT)",
             categories = setOf(Category.Sound),
@@ -480,6 +501,7 @@ object GenerationModelCatalog {
         "litert.stable-audio-open-small.music" to STABLE_AUDIO_TAGS,
         "litert.stable-audio-clip.sound" to STABLE_AUDIO_CLIP_TAGS,
         "nsynth-wavenet" to STABLE_AUDIO_CLIP_TAGS,
+        "litert.musicgen-small.music" to STABLE_AUDIO_TAGS,
     )
 
     /** Returns the TagDocs for a catalog model id, or null if not documented. */

@@ -161,6 +161,25 @@ fun ModelsScreen(
                     },
                 )
                 ModelDetailCard(
+                    title = "MusicGen Small (Meta Audiocraft, локально)",
+                    status = "RuntimeInDevelopment • процедурный fallback ~600 МБ когда появится ARM64 ONNX",
+                    selected = state.selectedMusicModelId == MUSIC_MODEL_MUSICGEN_SMALL,
+                    enabled = true,
+                    tags = GenerationModelCatalog.tagDocsFor("musicgen-small"),
+                    onSelect = { vm.selectMusicModel(MUSIC_MODEL_MUSICGEN_SMALL) },
+                    onInfo = {
+                        infoTarget = InfoTarget(
+                            title = "MusicGen Small (Meta Audiocraft)",
+                            tagline = GenerationModelCatalog.tagDocsFor("musicgen-small")?.tagline,
+                            tags = GenerationModelCatalog.tagDocsFor("musicgen-small"),
+                            runtime = "ONNX / LiteRT (в разработке, fallback на процедурный)",
+                            repository = GenerationModelCatalog.repositoryFor("musicgen-small"),
+                            license = GenerationModelCatalog.licenseFor("musicgen-small"),
+                            categoryLabel = infoCategoryLocalLabel,
+                        )
+                    },
+                )
+                ModelDetailCard(
                     title = "ElevenLabs Sound Effects (облако)",
                     status = "Нужен API-ключ ElevenLabs • длительность 1-22 секунды",
                     selected = state.selectedMusicModelId == SOUND_MODEL_ELEVEN_SFX,
@@ -1162,6 +1181,7 @@ private const val VOICE_MODEL_KOKORO = "kokoro-82m"
 
 /** Canonical generator ids (no category suffix). AudioTagInserter reads these. */
 private const val GEN_STABLE_AUDIO_MUSIC = "litert.stable-audio-open-small.music"
+private const val GEN_MUSICGEN_MUSIC = "litert.musicgen-small.music"
 private const val GEN_STABLE_AUDIO_SOUND = "litert.stable-audio-clip.sound"
 private const val GEN_ELEVENLABS_SOUND = "elevenlabs.sound"
 // Bundled placeholder generators were removed in favour of the
@@ -1169,6 +1189,7 @@ private const val GEN_ELEVENLABS_SOUND = "elevenlabs.sound"
 
 /** Suffix-bearing ids used by ModelsScreen state to distinguish tabs. */
 private const val MUSIC_MODEL_STABLE_AUDIO_OPEN_SMALL = "$GEN_STABLE_AUDIO_MUSIC:music"
+private const val MUSIC_MODEL_MUSICGEN_SMALL = "$GEN_MUSICGEN_MUSIC:music"
 private const val SOUND_MODEL_STABLE_AUDIO_CLIP = "$GEN_STABLE_AUDIO_SOUND:sound"
 private const val SOUND_MODEL_ELEVEN_SFX = "$GEN_ELEVENLABS_SOUND:sound"
 

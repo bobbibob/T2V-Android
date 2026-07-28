@@ -23,6 +23,7 @@ class GeneratorRegistry(
 
     fun all(): List<Generator> = buildList {
         add(NSynthSoundGenerator(appContext))
+        add(MusicGenMusicGenerator(appContext))
         val elevenCfg = settingsProvider().engines["elevenlabs"]
         val apiKey = elevenCfg?.get("apiKey")?.takeIf { it.isNotBlank() }
         add(ElevenLabsSoundEffectsGenerator(apiKey = apiKey.orEmpty()))
