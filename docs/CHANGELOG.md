@@ -5,46 +5,57 @@
 ## [Unreleased] - 2026-07-28
 
 ### Added
-- **Self-test кнопка в Settings** (`🧪 Run <music>/<sfx> self-test`).
-  Дописывает `<music>ambient pad</music> <sfx>door creak</sfx>` в последний
-  проект и запускает `GenerationPipeline.generate()`. По завершении
-  показывает `audiobookId`, статус, `segmentsDone/Total` и количество
-  music+sound клипов. Локализована в 11 локалях.
-- **`DownloadableModelCard`** в `ModelsScreen` — переиспользуемая карточка
-  для скачивания любой модели из `GenerationModelCatalog` через единый flow
-  (Download / progress bar / cancel / Select).
-- **`ModelsViewModel.downloadModelFromCatalog(catalogId)`** — единая точка
-  входа для скачивания из каталога. Сейчас реально скачивает только
-  `kokoro-82m`; для остальных записей пишет «Загрузка пока не подключена».
-- **`ModelsState`**: новые поля `downloadingCatalogId`, `catalogDownloadProgress`,
-  `catalogDownloadedBytes`, `catalogDownloadTotalBytes`, `isInstalled(catalogId, repository)`.
-- **`HuggingFaceRepository.VERIFIED_ANDROID_MODELS`** теперь формируется
-  динамически из `GenerationModelCatalog.entries` (все записи с `repository`
-  в формате `author/name` и не начинающиеся с `http`). Kokoro гарантированно
-  присутствует как fallback.
-- **Строки** `settings_debug`, `settings_debug_selftest_help`,
-  `settings_debug_selftest`, `models_download_button` во всех 11 локалях.
+- **MusicGen Small scaffold** in `generators/impl/MusicGenMusicGenerator.kt`.
+  - `Generator` implementation registered in `GeneratorRegistry`.
+  - `GenerationModelCatalog` entry `musicgen-small` with
+    `support=RuntimeInDevelopment`, `repository="wide-video/musicgen-small-v1.0.0"`,
+    `approximateDownloadBytes=600_000_000`, `license="CC-BY-NC-4.0"`.
+  - UI card under ModelsScreen → Music tab. Selecting routes `<music>`
+    tag generation to the MusicGen generator.
+  - **Currently falls back to `ProceduralAudioSynth.synthMusic()`** because
+    no working ARM64 ONNX export of the autoregressive decoder exists
+    for Android yet. The fallback is transparent to the user.
+- **ZipVoice Distill TTS engine** in `tts/engines/ZipVoiceTtsEngine.kt`.
+  - `TtsEngine` implementation registered in `EngineRegistry` as
+    `id="zipvoice_distill"`, `kind=Local`, `supportsCloning=true`.
+  - `GenerationModelCatalog` entry `zipvoice-distill-int8` (already
+    existed; now backed by a real engine class instead of just metadata).
+  - Validates `VoiceConfig.referenceAudioPath` in `synthesize()` and
+    throws `TtsEngineException.Generic` if the file is missing.
+  - Throws `TtsEngineException.NotInstalled("zipvoice_distill")` when
+    the Android sherpa-onnx runtime is not yet updated for ZipVoice
+    inference.
+- `models_download_button` string in all 11 locales (en/ru/ar/de/es/fr/
+  hi/it/ja/pt/zh).
 
 ### Fixed
-- `VoicesScreen.kt` revert'нут в `8fc42a0` baseline после серии поломок
-  (CD65FC0, BFDF022, 4CB57E1, 3C8B8C2). Локальный Piper picker диалог
-  не добавлялся до стабилизации.
-
-### Known issues (отложено)
-- **Kokoro inference зависает** на длинных текстах (>3 000 символов).
-  Audiobook #3 застрял в `running` после повторного self-test.
-- **`timelineStartMs=0`** для всех `<music>/<sfx>` клипов. Причина:
-  `AudioTagInserter.insert()` вызывается ДО voice-сегментов в
-  `GenerationPipeline.kt:109`, когда `durationMs=0` для всех segments.
-  Должен вызываться после цикла.
-- **ElevenLabs clone UI** не реагирует на нажатие «Создать клон».
+- **`AudioTagInserter.positionFor()` bug**: previously the inserter ran
+  BEFORE the voice-segment loop, so each segment still had
+  `durationMs=0`. The `positionFor()` sum was zero, and every music/sfx
+  clip was placed at `timelineStartMs=0`. The inserter now runs
+  AFTER the voice-segment loop, so it can read each segment's
+  actual `pauseBeforeMs + durationMs` and compute the right timeline
+  position. (Refs: self-test #2, all clips landed at 0.)
+- **Kokoro inference hang on long text**: previously if Kokoro's ONNX
+  runtime got stuck on a long segment, the audiobook stayed in
+  `running` forever. `engine.synthesize()` is now wrapped in
+  `withTimeoutOrNull(SEGMENT_TIMEOUT_MS = 5 minutes)`. On timeout
+  the segment is marked failed and a clear error message is shown.
+  (Refs: self-test #3, audiobook #3 stuck forever.)
+- **AudioTagInserter moved out of the pre-segment loop in
+  `GenerationPipeline.generate()`** so the inserter can see real
+  segment durations.
 
 ### Notes
-- Подписка / монетизация **отложены** (см. `docs/AI_HANDOFF.md`).
-- Никаких изменений в `aapt2`, signing, R8, AAB. APK как и раньше
-  собирается через `:app:assembleDebug`.
-- Все 4 коммита текущей сессии на ветке `codex/models-download`
-  (647dcf8, ccdd817e, 0f86301, 984e208) — последний CI 30338815715 зелёный.
+- Все 5 пунктов плана (см. `STATUS.md` → "Что делаем прямо сейчас")
+  реализованы в `codex/models-download` ветке. CI run 30347936814
+  зелёный (test + build).
+- Подписка / монетизация по-прежнему **отложены** (см. решение
+  владельца от 2026-07-28 в `docs/AI_HANDOFF.md`).
+- Модели **не в APK** — пользователь скачивает сам через
+  `HuggingFaceRepository`. MusicGen / ZipVoice — scaffolds, реальный
+  inference появится когда сообщество выпустит ARM64-совместимые
+  ONNX-экспорты.
 
 ## [Unreleased - 2026-07-27] - audio tags & NSynth scaffolding
 

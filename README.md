@@ -7,9 +7,21 @@ Kokoro/Piper TTS, облачные API (OpenAI, ElevenLabs, Gemini, Azure), и
 
 ## Что нового (2026-07-28)
 
-- ✅ **Локальный Kokoro 82M** verified end-to-end на устройстве.
-- ✅ **`<music>промпт</music>` и `<sfx>промпт</sfx>`** в тексте — клипы
-  появляются на нужной тайм-позиции в AudioEditor.
+### В этом коммите
+- ✅ **MusicGen Small scaffold** — UI в ModelsScreen, fallback на
+  `ProceduralAudioSynth` (нет ARM64 ONNX-экспорта от сообщества).
+- ✅ **ZipVoice Distill TTS engine** — on-device voice cloning через
+  sherpa-onnx. Валидирует `referenceAudioPath`. Scaffold до обновления
+  Android runtime.
+- ✅ **Фикс Kokoro зависания** — `withTimeoutOrNull(5 мин)` на каждый
+  segment. Больше не stuck в `running` на длинных текстах.
+- ✅ **Фикс `AudioTagInserter`** — inserter теперь работает **после**
+  voice-сегментов. `timelineStartMs` больше не 0.
+
+### Ранее (verified end-to-end на устройстве)
+- ✅ **Локальный Kokoro 82M** через sherpa-onnx Android runtime.
+- ✅ **`<music>промпт</music>` и `<sfx>промпт</sfx>`** в тексте →
+  `AudioClipEntity` в Room с правильной `timelineStartMs`.
 - ✅ **3-дорожечный редактор** (VOICE / MUSIC / SOUND) с FFmpeg + LAME MP3.
 - ✅ **15 языков Piper/VITS** (ru, en, de, fr, es, it, zh, ja, hi, bn, ar, ko, ...).
 - ✅ **11 локализаций** UI.

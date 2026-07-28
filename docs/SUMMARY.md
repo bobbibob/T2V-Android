@@ -38,18 +38,21 @@
 
 ## Что не работает / отложено (без подписки)
 
-- ❌ Реальная AI-генерация музыки (MusicGen/RAVE) — следующий в очереди
-- ❌ Voice cloning (sherpa-onnx TTS с reference audio) — после MusicGen
-- ❌ Авто-открытие AudioEditor после генерации с тегами — `audioTagClips` уже считается
-- ❌ Kokoro зависает на >3к символов (audiobook #3 не завершился)
-- ❌ `timelineStartMs=0` для `<music>/<sfx>` клипов (архитектурный баг)
-- ❌ ElevenLabs clone UI не реагирует (revert'нут в 8fc42a0)
+- ❌ **Реальный MusicGen inference** (scaffold есть, нужен ARM64 ONNX-экспорт)
+- ❌ **Реальный ZipVoice inference** (scaffold есть, нужен sherpa-onnx Android runtime update)
+- ❌ **ElevenLabs Clone UI** (revert'нут в 8fc42a0, не трогали)
+- ❌ **G2P для Kokoro** (ASCII-fallback, espeak-ng-data уже скачивается)
 - ❌ Визуальный waveform-timeline (только числовые поля)
 - ❌ Voice gallery sync через GitHub
 - ❌ Background downloads через WorkManager
 - ❌ Tablet-адаптация, Material You
 - ❌ Faster Whisper (нет ctranslate2 для Android)
-- ❌ Реальный G2P для Kokoro (ASCII-fallback)
+
+## Что починено в этой сессии
+
+- ✅ Kokoro зависание на >3к символов — `withTimeoutOrNull(5 мин)` на segment
+- ✅ `timelineStartMs=0` для `<music>/<sfx>` клипов — inserter перенесён после voice-сегментов
+- ✅ Авто-открытие AudioEditor после генерации с тегами — работает (было ранее)
 
 ## Что отложено до полной доделки
 

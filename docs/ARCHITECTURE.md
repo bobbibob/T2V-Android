@@ -94,6 +94,7 @@ User → Editor → save() → Room (ProjectEntity, rawText с <music>/<sfx>)
 | Gemini TTS | облако | `tts/engines/GeminiTtsEngine.kt` | — |
 | Azure Speech | облако | `tts/engines/AzureTtsEngine.kt` | — |
 | Custom HTTP | облако/локально (зависит от endpoint) | `tts/engines/CustomHttpTtsEngine.kt` | — |
+| ZipVoice Distill | on-device, sherpa-onnx (zero-shot clone) | `tts/engines/ZipVoiceTtsEngine.kt` | ~120 МБ |
 
 ## Где живут генераторы music/sound
 

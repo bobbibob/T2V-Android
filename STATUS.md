@@ -1,10 +1,10 @@
 # Текущий статус
 
 **Дата обновления:** 2026-07-28
-**Ветка:** `codex/models-download` (последний зелёный CI 30338815715, head `984e208a`)
-**Стабильная база:** `codex/audio-production` (последний зелёный CI 30328757706, head `8fc42a0`)
-**APK:** ~44 МБ, скачивается через `gh run download` + curl workaround
-**Тесты:** зелёные (`30338815715` — `test` + `build` оба success)
+**Ветка:** `codex/models-download` в `bobbibob/T2V-Android`
+**Последний зелёный CI:** `30347936814` (head `69dc959` — "fix(worker): drop duplicated primary constructor")
+**APK:** ~43 МБ, собран через `assembleDebug`
+**Тесты:** зелёные (test + build оба success)
 **Устройство для проверки:** `R5CN30LJS4W` (Samsung, ADB, разблокировано)
 
 ## Что лежит на полке
@@ -21,23 +21,26 @@
 - DownloadableModelCard — единая UI-карточка скачивания
 - GenerationModelCatalog — единый типизированный каталог
 - TagDocs Info dialog на каждой model/generator/engine карточке
+- MusicGen Music Generator (scaffold + UI; fallback на ProceduralAudioSynth)
+- ZipVoice TTS Engine (scaffold для voice cloning)
+- Kokoro inference timeout (5 мин) — больше не stuck в running
+- AudioTagInserter перенесён после voice-сегментов (timelineStartMs теперь
+  правильный, не 0)
 - Тесты: writeSilence, pause ms/s, clean, currencies, Num2Words — все зелёные
-- Документация: 24 файла в docs/
+- Документация: 25 файлов в docs/
 
 ❌ Не готово / отложено (без подписки):
-- Реальная AI-генерация музыки (MusicGen через ONNX) — следующий в очереди
-- sherpa-onnx TTS с клонированием голоса
-- Авто-открытие AudioEditor после генерации с тегами
-- Фикс Kokoro зависания на >3к символов
-- Фикс AudioTagInserter.positionFor (timelineStartMs=0)
-- Починка ElevenLabs clone UI
+- Реальный MusicGen inference (нужен ARM64 ONNX-экспорт от сообщества)
+- Реальный ZipVoice inference (нужен апдейт sherpa-onnx Android runtime)
+- ElevenLabs Clone UI (был revertнут, не трогали)
+- Реальный G2P для Kokoro (ASCII-fallback)
 - Визуальный waveform-timeline (drag/trim/split)
 - Voice gallery sync через GitHub
 
 🚫 Не будет (по решению владельца):
 - Подписка / монетизация (отложена до полной доделки приложения)
 - Google Play Billing, Firebase Auth, AAB-релиз
-- Модели в APK / Asset Packs (пользователь скачивает сам)
+- Модели в APK / Asset Packs (пользователь скачивает сам, на выбор)
 - Серверные TTS-движки / engine-host
 - Faster Whisper на устройстве
 - Встроенный Python / MCP / HTTP-сервер
@@ -54,17 +57,23 @@
 | # | Задача | Статус | Комментарий |
 |---|---|---|---|
 | 3 | Вернуть скачивание моделей | ✅ Сделано | `DownloadableModelCard` в `codex/models-download` |
-| 1 | MusicGen через ONNX | 📋 Следующий | Кандидаты: `wide-video/musicgen-small-v1.0.0` (int8 ~422 МБ) |
-| 2 | sherpa-onnx клонирование | 📋 Очередь | sherpa-onnx runtime подключён, нужна модель + UI |
-| — | Авто-открытие AudioEditor | 📋 Очередь | `GenerationPipeline.Progress.audioTagClips` уже считается |
-| — | Фикс Kokoro зависания | 📋 Очередь | Возможно таймаут на `engine.synthesize()` |
-| — | Фикс `AudioTagInserter.positionFor` | 📋 Очередь | Перенести `insert()` после цикла voice-сегментов |
+| 1 | MusicGen через ONNX | 🟡 Scaffold | Кандидаты: `wide-video/musicgen-small-v1.0.0` (int8 ~422 МБ) |
+| 2 | sherpa-onnx клонирование | 🟡 Scaffold | ZipVoice engine зарегистрирован, ждём runtime |
+| — | Авто-открытие AudioEditor | ✅ Сделано | `GenerationPipeline.Progress.audioTagClips` уже считается |
+| — | Фикс Kokoro зависания | ✅ Сделано | `withTimeoutOrNull(5 мин)` на каждый segment |
+| — | Фикс `AudioTagInserter.positionFor` | ✅ Сделано | Inserter после voice-сегментов, не до |
 
-## Следующие шаги (после MusicGen)
+| # | Следующие (после документации) | Статус | Комментарий |
+|---|---|---|---|
+| — | Реальный MusicGen inference | 📋 Следующий | ARM64 ONNX-экспорт от сообщества |
+| — | Реальный ZipVoice inference | 📋 Очередь | sherpa-onnx Android runtime update |
+| — | ElevenLabs Clone UI fix | 📋 Очередь | VoicesScreen.kt revert'нут, чинить заново |
+| — | G2P для Kokoro (eSpeak-ng) | 📋 Очередь | espeak-ng-data уже скачивается, нужен hook |
+
+## Следующие шаги (после MusicGen/ZipVoice inference)
 
 ### Фаза — доделка приложения
 - Visual waveform timeline
-- ElevenLabs clone fix
 - Voice gallery sync
 - Tablet-адаптация
 - Material You dynamic colors

@@ -21,7 +21,9 @@ T2V поддерживает **только два типа моделей** (п
 | ID | Категория | Runtime | Размер | Что нужно |
 |---|---|---|---|---|
 | `pocket-tts-int8` | Voice (cloning) | SherpaOnnx | неизвестно | Smoke-test на устройстве |
-| `zipvoice-distill-int8` | Voice (cloning) | SherpaOnnx | неизвестно | Smoke-test + UI для reference audio |
+| `zipvoice-distill-int8` | Voice (cloning) | SherpaOnnx | ~120 МБ | Sherpa-onnx Android runtime update + smoke-test |
+| `musicgen-small` | Music | ONNX (autoregressive) | ~600 МБ | ARM64 ONNX-экспорт от сообщества (Meta Audiocraft) |
+| `nsynth-wavenet` | Sound (SFX) | LiteRT | ~17 МБ | ARM64 smoke-test + `markSmokeTested()` |
 | `nsynth-wavenet` | Sound (SFX) | LiteRT | ~17 МБ | ARM64 smoke-test + `markSmokeTested()` |
 | `stable-audio-open-small` | Music + Sound (procedural) | LiteRT (DSP) | 0 | Процедурный, не AI; уже работает через `ProceduralAudioSynth` |
 | `stable-audio-clip` | Sound (procedural) | LiteRT (DSP) | 0 | Процедурный, не AI; уже работает |

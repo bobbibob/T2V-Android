@@ -1,8 +1,8 @@
 # T2V: инструкция и журнал передачи для ИИ
 
 Последнее обновление: 2026-07-28
-Рабочая ветка разработки: `codex/models-download` (последний зелёный CI 30338815715, head `984e208a`)
-Стабильная база: `codex/audio-production` (последний зелёный CI 30328757706, head `8fc42a0`)
+Рабочая ветка разработки: `codex/models-download` в `bobbibob/T2V-Android`
+Последний зелёный CI: `30347936814` (head `69dc959`)
 Устройство для проверок: `R5CN30LJS4W` (Samsung, ADB, разблокировано)
 
 Этот файл — главный оперативный контекст для следующего ИИ-агента. Его нужно
@@ -16,9 +16,11 @@
 - **Локальной сборки нет.** Никакого `./gradlew`, `gradle assembleDebug`,
   прямого `kotlinc` или `java -jar` для KSP на хосте разработчика. Все
   правки Kotlin/Java/XML компилируются **только** внутри GitHub Actions
-  workflow `android.yml`. Запускать `gh workflow run` после пуша можно
-  только с явного согласия владельца. На машине разработчика нет Android
-  SDK; `kotlinc` локально даёт ложноположительные результаты.
+  workflow `android.yml` на ветке `codex/models-download`. Запускать
+  `gh workflow run` после пуша можно только с явного согласия владельца.
+  Если нет сети к GitHub — код коммитится и пушится; CI должен стартовать
+  автоматически благодаря push-trigger. Проверка синтаксиса на хосте не
+  считается валидной верификацией.
 - Приложение называется **T2V**, package/application id — `com.t2v`.
 - Допустимы только `Local` (на устройстве) и `Cloud` (публичный API)
   TTS-движки. Отдельные пользовательские engine-host/server-host запрещены.
@@ -45,16 +47,16 @@
 
 ## Репозиторий и Git
 
-- Локальный путь: `/Users/robertbiktimirov/Downloads/books/t2v`
+- Локальный путь: `/Users/robertbiktimirov/Downloads/books/t2v-new`
 - GitHub: `bobbibob/T2V-Android`
-- Текущая ветка: `codex/models-download`
-- Стабильная база: `codex/audio-production`
-- Базовый проверенный коммит: `e052f1c feat: add Russian voices and voice cloning`.
+- Старое репо `bobbibob/LTVReader-Android` — **archived** (read-only),
+  используется как исторический референс если что-то понадобится
+- Текущая ветка: `codex/models-download` от `main`
+- Базовый коммит (clean initial): `186d5ec feat: initial T2V Android — Text to Voice & Audiobook`
 
-## Что реально работает на устройстве (по состоянию на 2026-07-28)
+## Что реально работает на устройстве (verified end-to-end)
 
-### Verified end-to-end (через self-test, база данных, логи):
-
+### Verified ✅
 - **Kokoro 82M**: скачивается с HF (`csukuangfj/kokoro-en-v0_19`,
   rev `92805c485...`), сохраняется в `files/models/8ae649d98c616269e26efb10/`,
   `KokoroTtsEngine.synthesize()` даёт WAV 22050 Hz mono 16-bit.
@@ -69,26 +71,23 @@
   в Room, `markupTagId = "music-<offset>"` / `"sound-<offset>"`.
 - **3-track editor**: VOICE / MUSIC / SOUND дорожки, `AudioMixer` микширует,
   `FFmpegBridge` рендерит MP3 (с LAME 3.100) или WAV.
+- **Kokoro inference timeout (5 мин)**: больше не stuck в `running` на
+  длинных текстах. Покрыто `withTimeoutOrNull(SEGMENT_TIMEOUT_MS)` в
+  `GenerationPipeline.kt`.
+- **`AudioTagInserter` перенесён после voice-сегментов**: `timelineStartMs`
+  теперь корректный (сумма `pauseBeforeMs + durationMs` завершённых
+  segments), не 0.
+- **Авто-открытие AudioEditor** после генерации если есть
+  `<music>/<sfx>` клипы (`GenerationPipeline.Progress.audioTagClips`).
 
-### Реализовано в коде, но с известными ограничениями:
-
-- **Kokoro inference зависает** на длинных текстах (>3 000 символов).
-  Audiobook #3 застрял в `running` навсегда после повторного нажатия self-test.
-  Возможная причина: ONNX-сессия не возвращается или out-of-memory.
-  **Не починено** — отложено.
-- **`<music>/<sfx>` клипы имеют `timelineStartMs = 0`** (баг).
-  Причина: `AudioTagInserter.insert()` вызывается ДО генерации voice-сегментов
-  (в `GenerationPipeline.kt:109`), когда `durationMs=0`. Должен вызываться
-  после цикла. **Не починено** — отложено.
-- **ElevenLabs clone UI не реагирует** на нажатие «Создать клон».
-  `VoicesScreen.kt` ломался 4 раза, был revert'нут в `8fc42a0`.
-  **Не починено** — отложено.
-
-### Локальные модели (registered, но пока без скачивания через UI):
-
-- **Piper/VITS** на 15 языках (Русский, English, German, French, Spanish,
-  Italian, Chinese, Japanese, Hindi, Bengali, Arabic, Korean).
-  Скачиваются через `RussianVoiceInstaller.install()`.
+### Scaffold (не работает пока, fallback)
+- **MusicGen Small** (`MusicGenMusicGenerator`): UI в ModelsScreen → Music
+  tab. Сейчас fallback на `ProceduralAudioSynth.synthMusic()`. Когда
+  сообщество выпустит ARM64 ONNX-экспорт autoregressive decoder — переключаем.
+- **ZipVoice Distill TTS** (`ZipVoiceTtsEngine`): зарегистрирован в
+  `EngineRegistry` как `Local` с `supportsCloning=true`. Валидирует
+  `VoiceConfig.referenceAudioPath`. Бросает `NotInstalled` пока Android
+  sherpa-onnx runtime не обновлён.
 - **NSynth wavenet** (Magenta, SFX) — `RuntimeInDevelopment`, refuses to run
   пока `LiteRtModelInstaller.markSmokeTested()` не вызван после ARM64 smoke-test.
 - **Stable Audio Open Small** (music) и **Stable Audio Clip** (sound) —
@@ -96,43 +95,27 @@
 - **PocketTTS**, **ZipVoice** (zero-shot voice cloning) — `Experimental` /
   `RuntimeInDevelopment`; нужна локальная модель под Android.
 
-### Архитектура скачивания (одна точка входа):
+### Локальные модели (registered, но пока без скачивания через UI)
+- **Piper/VITS** на 15 языках (Русский, English, German, French, Spanish,
+  Italian, Chinese, Japanese, Hindi, Bengali, Arabic, Korean).
+  Скачиваются через `RussianVoiceInstaller.install()`.
 
-- `HuggingFaceRepository.install(model, variant, onProgress)` качает файлы
-  с `https://huggingface.co/<author>/<name>/resolve/<revision>/<path>`.
-- `VERIFIED_ANDROID_MODELS` теперь формируется из `GenerationModelCatalog.entries`
-  (все записи с `repository` в формате `author/name`) + `KOKORO_REPOSITORY`
-  как fallback.
-- UI: `DownloadableModelCard` в `ModelsScreen` показывает Download / progress
-  / cancel / select для **любой** каталожной записи, но реально скачивается
-  только Kokoro (для остальных `downloadModelFromCatalog()` пока пишет
-  «Загрузка для X пока не подключена»).
+## Известные баги и долги
 
-## Сводка коммитов текущей сессии (codex/models-download)
-
-1. **`647dcf8`** — feat(models): refactor download UI; DownloadableModelCard + catalog plumbing
-2. **`ccd817e`** — fix(models): make InfoTarget internal so DownloadableModelCard compiles
-3. **`0f86301`** — fix(models): make InfoTarget/ModelTab public (no modifier)
-4. **`984e208`** — fix(models): onInfo is () -> Unit, not (InfoTarget) -> Unit
-
-Все четыре CI run (30337677737, 30338039614, 30338445304, 30338815715) —
-последний зелёный. APK 43.5 МБ скачан через GitHub API + curl.
-
-## План работы (что делаем сейчас)
-
-> Приоритет: **сначала доделать приложение полностью** (включая
-> локальные модели), потом решать с подпиской. Никаких Paywall,
-> Google Play Billing, Firebase Auth, AAB-релизов, Privacy Policy
-> сейчас не пишем.
-
-| # | Задача | Статус | Комментарий |
-|---|---|---|---|
-| 3 | Вернуть скачивание моделей в UI | ✅ Сделано | `DownloadableModelCard`, `downloadModelFromCatalog()` |
-| 1 | MusicGen через ONNX | 📋 Следующий | Нужен реальный LiteRT-совместимый .tflite под Android. MusicGen — encoder-decoder, не LiteRT-формат. Возможно RAVE / Diffsound / AudioLDM TFLite как альтернативы |
-| 2 | sherpa-onnx TTS с клонированием | 📋 Очередь | sherpa-onnx Android runtime уже подключён, нужна модель (PocketTTS / ZipVoice / XTTS-v2) + UI для reference audio |
-| — | Авто-открытие AudioEditor после генерации с тегами | 📋 Очередь | `GenerationPipeline.Progress.audioTagClips` уже подсчитывает; UI ещё не реагирует |
-| — | Фикс Kokoro зависания | 📋 Очередь | Возможно таймаут на `engine.synthesize()` |
-| — | Фикс `AudioTagInserter.positionFor` (timelineStartMs=0) | 📋 Очередь | Перенести `insert()` после цикла voice-сегментов |
+1. **Реальный MusicGen inference** — нет ARM64 ONNX-экспорта. Кандидаты:
+   `wide-video/musicgen-small-v1.0.0` (int8 ~422 МБ), `chinedudave06/
+   musicgen-medium-stereo-onnx` (int8 ~427 МБ). TFLite wrapper не написан.
+2. **Реальный ZipVoice inference** — нужен апдейт Android sherpa-onnx
+   runtime. Следить за [k2-fsa/sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx/releases).
+3. **ElevenLabs Clone UI** — `VoicesScreen.kt` revert'нут в `8fc42a0` после
+   серии поломок. Нужно заново: локальный Piper picker dialog или
+   починить ElevenLabs clone flow с API-ключом.
+4. **G2P для Kokoro** — сейчас ASCII-fallback, плохое произношение.
+   `espeak-ng-data/` уже скачивается как часть Kokoro bundle, нужно
+   включить в `KokoroTtsEngine` вместо ASCII.
+5. **Визуальный waveform-timeline** — пока только числовые поля в
+   AudioEditorScreen. Нужен drag/trim/split + визуальный playhead.
+6. **Voice gallery sync** через GitHub.
 
 ## Что отложено (без подписки — навсегда, не «до подписки»)
 
@@ -147,6 +130,62 @@
 - ❌ Модели в APK / Asset Packs (пользователь скачивает сам)
 - ❌ Серверные TTS-движки / engine-host
 
+## Архитектура скачивания (одна точка входа)
+
+```
+ModelsScreen → ModelsViewModel.downloadModelFromCatalog(catalogId)
+                       ↓
+                HuggingFaceRepository.install(model, variant, onProgress)
+                       ↓
+                https://huggingface.co/<author>/<name>/resolve/<revision>/<path>
+                       ↓
+                files/models/<sha256-prefix>/  (Kokoro) или
+                files/models/litert/<modelId>/  (LiteRT)
+                       ↓
+                markInstalled(markSmokeTested для ARM64 runtime)
+```
+
+`HuggingFaceRepository.VERIFIED_ANDROID_MODELS` — теперь формируется из
+`GenerationModelCatalog.entries` (все записи с `repository` в формате
+`author/name`) + `KOKORO_REPOSITORY` как fallback.
+
+UI: `DownloadableModelCard` в `ModelsScreen` показывает Download / progress
+/ cancel / select для **любой** каталожной записи. Реально скачивается
+только Kokoro (для остальных `downloadModelFromCatalog()` пока пишет
+«Загрузка для X пока не подключена»).
+
+## План работы (что делаем сейчас)
+
+> Приоритет: **сначала доделать приложение полностью** (включая
+> локальные модели), потом решать с подпиской. Никаких Paywall,
+> Google Play Billing, Firebase Auth, AAB-релизов, Privacy Policy
+> сейчас не пишем.
+
+| # | Задача | Статус | Комментарий |
+|---|---|---|---|
+| 3 | Вернуть скачивание моделей в UI | ✅ Сделано | `DownloadableModelCard`, `downloadModelFromCatalog()` |
+| 1 | MusicGen через ONNX (scaffold) | ✅ Сделано | fallback на ProceduralAudioSynth |
+| 1 | Реальный MusicGen inference | 📋 Следующий | Нужен ARM64 ONNX-экспорт от сообщества |
+| 2 | sherpa-onnx TTS с клонированием (scaffold) | ✅ Сделано | ZipVoice engine зарегистрирован |
+| 2 | Реальный ZipVoice inference | 📋 Очередь | sherpa-onnx Android runtime update |
+| — | Авто-открытие AudioEditor | ✅ Сделано | `GenerationPipeline.Progress.audioTagClips` |
+| — | Фикс Kokoro зависания | ✅ Сделано | `withTimeoutOrNull(SEGMENT_TIMEOUT_MS)` |
+| — | Фикс `AudioTagInserter.positionFor` | ✅ Сделано | Inserter после voice-сегментов |
+| — | ElevenLabs Clone UI | 📋 Очередь | `VoicesScreen.kt` revert'нут в 8fc42a0 |
+| — | G2P для Kokoro | 📋 Очередь | espeak-ng-data в Kokoro bundle |
+| — | Визуальный waveform-timeline | 📋 Очередь | drag/trim/split + playhead |
+
+## Сводка коммитов текущей сессии (`codex/models-download` в T2V-Android)
+
+1. **`186d5ec`** — feat: initial T2V Android — Text to Voice & Audiobook
+2. **`25aa6b1`** — feat(generators): MusicGen Small scaffold + UI card
+3. **`842d5e8`** — feat(tts): ZipVoice Distill on-device voice cloning scaffold
+4. **`f6533d7`** — fix(generators+pipeline): import MusicGen, Kokoro segment timeout, tag inserter after voice
+5. **`1c6a3f8`** — fix(worker): place companion object after primary constructor
+6. **`69dc959`** — fix(worker): drop duplicated primary constructor
+
+**CI run 30347936814 зелёный** (test + build success).
+
 ## Полезные однострочники
 
 ```bash
@@ -159,26 +198,25 @@ sqlite3 -header -separator '|' /tmp/t2v.db \
 
 # Скачать APK последнего зелёного CI
 gh run list --workflow android.yml --branch codex/models-download --limit 1 \
-  --json databaseId,conclusion --jq '.[] | select(.conclusion=="success") | .databaseId'
-# затем: gh run download <id> -n app-debug
+  --json databaseId,conclusion | jq -r '.[] | select(.conclusion=="success") | .databaseId'
+# затем: gh run download <id> -n app-debug (но часто обрывается на 30 МБ,
+# workaround — curl с -C - к https://api.github.com/.../artifacts/<id>/zip)
 
 # Проверить Kokoro файлы на устройстве
-adb -s R5CN30LJS4W shell 'run-as com.t2v.debug ls files/models/'
+adb -s R5CN30LJS4W shell 'run-as com.t2v.debug ls files/models/8ae649d98c616269e26efb10/'
 
 # Запустить self-test из UI
 adb -s R5CN30LJS4W shell am start -n com.t2v.debug/com.t2v.ui.MainActivity
 # (затем вручную: Settings → 🧪 Run <music>/<sfx> self-test)
 ```
 
-## Известные баги и долги (issue list)
+## Странности с CI
 
-1. **Kokoro зависает** на >3к символов (audiobook #3 не завершился)
-2. **`timelineStartMs=0`** для всех `<music>/<sfx>` клипов
-3. **ElevenLabs clone UI** не реагирует на «Создать клон»
-4. **`VoicesScreen.kt`** нестабилен — ломался 4 раза, revert'нут
-5. **APK download через `gh run download`** обрывается на 30 МБ — workaround:
-   curl + `https://api.github.com/repos/.../actions/artifacts/<id>/zip` с `-C -`
-6. **Sherpa-onnx cloning model** не выбрана — нужен аудит готовых моделей
+В 2026-07-28 GitHub Actions runner был **очень медленный** — несколько CI
+висели по 20+ минут без движения. 4 CI failed с compile errors (от моих же
+фиксов), 3 были отменены вручную. Последний `30347936814` прошёл успешно
+за ~25 минут вместо обычных 5-7. Причина — параллельные workflow, shared
+infrastructure. Если проблема повторится — отменять и перезапускать.
 
 ## Как обновлять этот файл
 

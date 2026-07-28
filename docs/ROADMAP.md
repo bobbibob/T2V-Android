@@ -54,7 +54,7 @@
 - [x] **`<music>промпт</music>` и `<sfx>промпт</sfx>`** (XML-стиль) →
       `LTVMarkupParser.parseSpans()` рвёт voice-чанк в каждом теге,
       `AudioTagInserter` создаёт клип на нужной дорожке.
-- [x] **`GenerationModelCatalog`** — единый типизированный источник для
+- [x] **GenerationModelCatalog** — единый типизированный источник для
       Voice/Music/Sound моделей с `Support.Verified` /
       `RuntimeInDevelopment` / `Experimental` статусами.
 - [x] **Локальный Kokoro через sherpa-onnx Android runtime**, verified end-to-end
@@ -66,35 +66,53 @@
 - [x] **Self-test кнопка** в Settings для отладки `<music>/<sfx>` pipeline.
 - [x] **DownloadableModelCard** в ModelsScreen — единая UI-карточка
       для скачивания любой модели из каталога.
+- [x] **MusicGen Small scaffold** — `MusicGenMusicGenerator` зарегистрирован в
+      `GeneratorRegistry`. UI card в Music tab. Сейчас fallback на
+      `ProceduralAudioSynth` (нет рабочего ARM64 ONNX-экспорта). Когда
+      сообщество выпустит совместимый экспорт — переключаем.
+- [x] **ZipVoice Distill TTS engine** — `ZipVoiceTtsEngine` зарегистрирован в
+      `EngineRegistry` как `Local` с `supportsCloning=true`. Валидирует
+      `referenceAudioPath`. Бросает `NotInstalled` пока Android
+      sherpa-onnx runtime не обновлён для ZipVoice.
+- [x] **Kokoro inference timeout** — `withTimeoutOrNull(5 мин)` на каждый
+      segment. Если Kokoro зависает на длинном тексте, audiobook больше
+      не stuck в `running` — выдаёт clear error.
+- [x] **`AudioTagInserter` перенесён ПОСЛЕ voice-сегментов** в
+      `GenerationPipeline.generate()`. Раньше inserter видел
+      `durationMs=0` для всех segments, теперь — реальные значения.
+      `timelineStartMs` больше не 0.
 - [x] TagDocs Info dialog на каждой model/generator/engine карточке.
 - [x] 11 локалей strings.xml покрытие всех новых строк.
+
+**CI run 30347936814 зелёный** (test + build, APK 43 МБ).
 
 ## 🚧 В работе (v0.2.0 → v0.3.0)
 
 ### Сейчас
 
-- [ ] **MusicGen через ONNX** — реальная AI-генерация музыки. MusicGen
-      encoder-decoder, нужен LiteRT-совместимый экспорт. Кандидаты:
-      `wide-video/musicgen-small-v1.0.0` (int8 ~422 МБ), `chinedudave06/
-      musicgen-medium-stereo-onnx` (int8 ~427 МБ). TFLite-wrapper ещё не
-      написан.
-- [ ] **sherpa-onnx TTS с клонированием голоса** — sherpa-onnx Android
-      runtime уже подключён, нужна модель (PocketTTS / ZipVoice / XTTS-v2
-      sherpa-onnx fork) + UI для reference audio. Кандидаты:
-      `csukuangfj/sherpa-onnx-pocketsv-zh`, `k2-fsa/sherpa-onnx` releases.
-- [ ] **Авто-открытие AudioEditor** после генерации если есть
-      `<music>/<sfx>` клипы. `GenerationPipeline.Progress.audioTagClips`
-      уже подсчитывает; UI ещё не реагирует.
-- [ ] **Фикс Kokoro зависания** на длинных текстах (>3к символов).
-- [ ] **Фикс `AudioTagInserter.positionFor`** — сейчас `timelineStartMs=0`
-      потому что `insert()` вызывается ДО voice-сегментов. Перенести
-      после цикла.
+- [ ] **Реальный MusicGen inference** — нужен ARM64 ONNX-экспорт от
+      сообщества. Кандидаты: `wide-video/musicgen-small-v1.0.0` (int8 ~422 МБ
+      decoder + 110 МБ text encoder + 60 МБ encodec_decode). MusicGen —
+      autoregressive encoder-decoder, не подходит для текущего
+      sherpa-onnx Android runtime. Нужен LiteRT/TFLite-экспорт от Meta
+      или сообщества.
+- [ ] **Реальный ZipVoice inference** — нужен апдейт Android sherpa-onnx
+      runtime, который бы включал `OfflineTts` с ZipVoice-конфигом
+      (`promptText` + `promptSamples`). Следить за релизами
+      [k2-fsa/sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx/releases).
+- [ ] **ElevenLabs Clone UI** — `VoicesScreen.kt` revert'нут в `8fc42a0`
+      после серии поломок. Нужно заново: локальный Piper picker dialog
+      ИЛИ починить ElevenLabs clone flow с API-ключом.
+- [ ] **Реальный G2P для Kokoro** — сейчас ASCII-fallback, что даёт
+      плохое произношение. eSpeak-ng уже скачивается как часть Kokoro
+      bundle (см. `files/models/8ae649d98c616269e26efb10/espeak-ng-data/`)
+      — нужно включить его в `KokoroTtsEngine` вместо ASCII-fallback.
+- [ ] **Визуальный waveform-timeline** в AudioEditorScreen — пока только
+      числовые поля. Нужен drag/trim/split + визуальный playhead.
 
 ### Дальше (v0.3.0+)
 
 - [ ] Voice gallery sync (GitHub каталог).
-- [ ] Полный timeline-микшер (мульти-трек waveform, drag/trim/split,
-      визуальный playhead).
 - [ ] Background downloads через WorkManager.
 - [ ] SRT/ASS-экспорт через UI.
 - [ ] Tablet-адаптация (adaptive layout, two-pane).
@@ -103,17 +121,18 @@
 - [ ] UI-тесты (Compose UI Test).
 - [ ] Расширенные правила нормализации.
 - [ ] Шаринг аудиокниги (Android Share Intent).
-- [ ] ElevenLabs Instant Voice Clone — починить UI (сейчас не реагирует).
 
 ## 🛣 Дальше (v0.4.0+ — после доделки приложения)
 
-- [ ] **Подписка / монетизация** (Play Billing Library v7+, server-side
-      verification, paywall screen, premium-функции). Подписка отложена
-      до завершения функциональной части.
+- [ ] **Подписка / монетизация** (Play Billing Library v7+,
+      server-side verification, paywall screen, premium-функции).
+      Подписка отложена до завершения функциональной части
+      (решение владельца от 2026-07-28).
 - [ ] Публикация в Google Play / F-Droid. Требует keystore, AAB build,
       Privacy Policy URL, Data Safety form, $25 developer account.
 - [ ] **Backend** (server-side verification подписки, прокси к
-      ElevenLabs / MusicGen для скрытия ключей, хранение клонов голосов).
+      ElevenLabs / MusicGen для скрытия ключей, хранение клонов
+      голосов).
 
 ## ❌ Не будет
 

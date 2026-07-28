@@ -117,3 +117,22 @@ VOICE / MUSIC / SOUND. Каждая дорожка — `AudioTrackEntity` в Roo
 времени аудиокниги. Сейчас `AudioTagInserter` ставит 0 для music/sound
 клипов (баг). Должен вычисляться как сумма `pauseBeforeMs + durationMs`
 уже сгенерированных voice-сегментов.
+
+
+## MusicGen
+Meta Audiocraft — autoregressive transformer для генерации музыки
+из текстового промпта. Small (~300M params, ~600 МБ int8). В T2V
+зарегистрирован как scaffold, fallback на ProceduralAudioSynth.
+Нужен ARM64 ONNX-экспорт для реального inference.
+
+## ZipVoice Distill
+k2-fsa zero-shot voice cloning TTS. Берёт 5-30 сек reference audio
+и синтезирует произвольный текст в этом голосе. В T2V
+зарегистрирован как Local engine, scaffold до обновления Android
+sherpa-onnx runtime.
+
+## `withTimeoutOrNull`
+Kotlin coroutine функция, которая отменяет блок если он не
+завершился за указанное время. В T2V используется в
+`GenerationPipeline` чтобы Kokoro не зависал навечно на длинных
+текстах (5 минут timeout per segment).
