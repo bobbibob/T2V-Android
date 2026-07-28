@@ -47,7 +47,8 @@ object SoundFontParser {
             val chunkSize = bb.int.toLong() and 0xFFFFFFFFL
             if (chunkId == "LIST") {
                 val listType = readAscii(bb, 4)
-                val listEnd = (bb.position() + (chunkSize - 4)).toInt()
+                val currentPos = bb.position()
+                val listEnd: Int = (currentPos + (chunkSize - 4L)).toInt()
                 when (listType) {
                     "INFO" -> {
                         // read version (ifil chunk)
