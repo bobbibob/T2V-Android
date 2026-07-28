@@ -57,10 +57,10 @@ object DrumKit {
         56 to DrumKind.COWBELL,
         60 to DrumKind.BONGO,
         61 to DrumKind.BONGO,
-        62 to DrumKind.Conga,
-        63 to DrumKind.Conga,
-        64 to DrumKind.Conga,
-        65 to DrumKind.Conga,
+        62 to DrumKind.CONGA,
+        63 to DrumKind.CONGA,
+        64 to DrumKind.CONGA,
+        65 to DrumKind.CONGA,
     )
 
     fun render(
@@ -82,7 +82,7 @@ object DrumKit {
             DrumKind.RIDE -> renderCymbal(out, sampleRate, decayMs = 600, rng)
             DrumKind.COWBELL -> renderCowbell(out, sampleRate)
             DrumKind.BONGO -> renderToneDrum(out, sampleRate, freq = 240.0, decayMs = 100, rng)
-            DrumKind.Conga -> renderToneDrum(out, sampleRate, freq = 200.0, decayMs = 200, rng)
+            DrumKind.CONGA -> renderToneDrum(out, sampleRate, freq = 200.0, decayMs = 200, rng)
         }
         return out
     }

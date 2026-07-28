@@ -158,10 +158,10 @@ object SoundFontParser {
     private fun parseSample(bytes: ByteArray): Sample {
         val bb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         val name = readAscii(bb, 20)
-        val start = bb.int.toInt() and 0xFFFFFFFFL.toInt()
-        val end = bb.int.toInt() and 0xFFFFFFFFL.toInt()
-        val loopStart = bb.int.toInt() and 0xFFFFFFFFL.toInt()
-        val loopEnd = bb.int.toInt() and 0xFFFFFFFFL.toInt()
+        val start = bb.int
+        val end = bb.int
+        val loopStart = bb.int
+        val loopEnd = bb.int
         val sampleRate = bb.int
         val originalKey = bb.short.toInt() and 0xFF
         val correction = bb.short.toInt()

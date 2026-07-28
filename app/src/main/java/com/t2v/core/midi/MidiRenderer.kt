@@ -1,10 +1,10 @@
 package com.t2v.core.midi
 
-import com.t2v.core.midi.synth.Synthesiser
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.pow
 import kotlin.math.sin
+import com.t2v.core.midi.synth.DrumKit
 
 /**
  * Рендерит [MidiSequence] в моно 16-bit PCM.
@@ -222,11 +222,11 @@ class Synthesiser(private val sampleRate: Int) {
                 (s * 0.15).toFloat()
             }
             88 -> {  // Synth Pad: slow LFO + 3 detuned sines
-                val lfo = 0.8 + 0.2 * sin(2 * PI * 0.3 * t)
+                val lfo = (0.8 + 0.2 * sin(2 * PI * 0.3 * t)).toFloat()
                 val detune = 0.01
-                (sin(f * t) * 0.4 +
+                ((sin(f * t) * 0.4 +
                     sin(f * (1 + detune) * t) * 0.3 +
-                    sin(f * (1 - detune) * t) * 0.3) * lfo.toFloat()
+                    sin(f * (1 - detune) * t) * 0.3) * lfo).toFloat()
             }
             96 -> {  // SFX: FM-like
                 val mod = sin(2 * PI * freq * 2 * t)
