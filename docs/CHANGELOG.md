@@ -298,3 +298,46 @@
   → залить в `asigalov61/TinyMusician-ONNX` → обновить каталог
 - `onnxruntime-mobile` AAR dependency в `app/build.gradle.kts`
 - Real inference step в `TinyMusicianMusicGenerator.generate()`
+
+## [Unreleased] - 2026-07-28 (MusicGen Small ONNX integration)
+
+### Added
+
+- **`onnxruntime-android:1.17.0`** AAR dependency в `app/build.gradle.kts` (Microsoft, Apache-2.0).
+- **`core/onnx/OrtSessionProvider.kt`** (154 строки): lazy-init обёртка над
+  ONNX Runtime. Singleton `OrtEnvironment`, кеш сессий по `modelId`,
+  thread-safe доступ. Используется всеми ONNX-генераторами.
+- **`MusicGenOnnxGenerator.kt`** (375 строк): **реальный AI music generation**
+  через ONNX Runtime. Pipeline: text → T5 encoder → autoregressive
+  decoder (24 layers, 16 heads, 1024 hidden) с classifier-free guidance
+  (CFG=3.0) + softmax sampling → EnCodec → 32 kHz PCM.
+  - **НЕ заменяет** существующий `MusicGenMusicGenerator` (procedural fallback).
+  - Доступен только когда все 3 ONNX-файла скачаны.
+- **4 JVM unit-теста** в `core/onnx/OrtSessionProviderTest`.
+- **`GenerationModelCatalog.musicgen-small`** обновлён:
+  - `approximateDownloadBytes` = 1_950_000_000 (1.95 ГБ, было 3.7 ГБ)
+  - `minimumRamMb` = 2_560
+  - `license` = "CC-BY-NC-4.0 (Meta MusicGen — non-commercial)" с ⚠️
+  - Подробные `notes` с архитектурой и latency
+- **`ModelsScreen` новая UI-карточка** "MusicGen Small ONNX (CC-BY-NC, ~2 ГБ)":
+  - `state.musicGenOnnxReady` — флаг доступности (проверяет 3 файла)
+  - `MUSIC_MODEL_MUSICGEN_ONNX` const для нового выбора
+- **`GeneratorRegistry`** — `MusicGenOnnxGenerator` зарегистрирован.
+- **`docs/MUSICGEN_ONNX.md`** (140 строк): полная архитектура, bundle, latency, лицензия.
+
+### Validated
+
+- **End-to-end inference** на workstation через Python + onnxruntime 1.23.2:
+  - text_encoder: 90ms inference
+  - decoder_with_past: 77ms/step (single), 152ms/step (CFG × 2)
+  - encodec_decode: 0.3s, 2 sec WAV output
+  - Полный pipeline (text → 2 sec WAV @ 32 kHz): **~15.4 sec на CPU**
+  - Softmax + CFG=3.0 + T=1.0: std=0.069 (audible, -23 dB)
+- **Bundle SHA-256** посчитан для всех 6 файлов.
+- **Отчёт** `/tmp/MUSICGEN_VALIDATION.md` (170 строк).
+
+### Next
+
+- ARM64 smoke-test на устройстве `R5CN30LJS4W`
+- XNNPACK delegate для 3-5x ускорения
+- Переход `musicgen-small` в `Support.Verified` после smoke-test

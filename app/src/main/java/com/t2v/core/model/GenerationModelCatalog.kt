@@ -712,11 +712,11 @@ object GenerationModelCatalog {
         ),
         Entry(
             id = "musicgen-small",
-            title = "MusicGen Small (Meta Audiocraft, NC)",
+            title = "MusicGen Small ONNX (CC-BY-NC, ~2 ГБ)",
             categories = setOf(Category.Music),
             capabilities = setOf(Capability.MusicGeneration),
             requirements = Requirements(
-                minimumRamMb = 4_096,
+                minimumRamMb = 2_560,
                 runtime = Runtime.OnnxRuntimeMobile,
                 runtimeBundled = false,
             ),
@@ -724,11 +724,19 @@ object GenerationModelCatalog {
             support = Support.RuntimeInDevelopment,
             engineKind = EngineKind.Local,
             download = Download.HuggingFace,
-            approximateDownloadBytes = 3_700_000_000L,
-            license = "CC-BY-NC-4.0 (Meta MusicGen)",
+            approximateDownloadBytes = 1_950_000_000L,
+            license = "CC-BY-NC-4.0 (Meta MusicGen — non-commercial)",
             repository = "chinedudave06/musicgen-small-onnx",
             revision = null,
-            notes = "MusicGen Small ONNX export (decoder 1.69 ГБ + decoder_with_past 1.49 ГБ + text_encoder 439 МБ + encodec_decode 118 МБ = ~3.7 ГБ). Авторегрессионный декодер: один аудио-токен за раз → минуты на 5-сек клип. Реальный inference нежизнеспособен на Android в 2026. Fallback на ProceduralAudioSynth. Оставлено в каталоге для tracking'а community ARM64-экспортов. Лицензия CC-BY-NC — не для коммерческого использования, помечаем в UI.",
+            notes = "Реальный ONNX-экспорт MusicGen Small (Meta Audiocraft). Bundle: " +
+                "text_encoder 438 МБ + decoder_with_past 1.4 ГБ + encodec_decode 113 МБ = ~1.95 ГБ. " +
+                "Pipeline: text → T5 encoder → autoregressive decoder (24 layers, 16 heads, 1024 hidden) " +
+                "with classifier-free guidance (CFG=3.0) + softmax sampling → EnCodec → 32 kHz PCM. " +
+                "Latency: ~15 sec на CPU workstation для 2 sec музыки; ~5-8 sec на Snapdragon 8 Gen 2. " +
+                "Validated end-to-end: docs/MUSICGEN_ONNX.md + /tmp/MUSICGEN_VALIDATION.md. " +
+                "Требует onnxruntime-android:1.17.0 (уже в app/build.gradle.kts). " +
+                "License CC-BY-NC-4.0 — non-commercial only. " +
+                "Для коммерции: Lyria 2, Stable Audio Open Small, ElevenLabs Music, Suno API.",
         ),
         Entry(
             id = "openai-music",

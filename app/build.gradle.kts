@@ -143,6 +143,13 @@ dependencies {
     val tflite = "2.14.0"
     implementation("org.tensorflow:tensorflow-lite:$tflite")
 
+    // ONNX Runtime — для on-device MusicGen Small ONNX inference
+    // (~2 ГБ скачиваемой модели, real AI music generation с CFG).
+    // Лицензия модели CC-BY-NC-4.0 ⚠️ non-commercial.
+    // См. docs/MUSICGEN_ONNX.md
+    val onnxruntime = "1.17.0"
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:$onnxruntime")
+
     // NumPy не нужен: всё, что было на numpy, переписано на ручные массивы.
     // Документы: docx4j нет в Android, используем чистый ZIP-парсер для DOCX.
     implementation("org.apache.commons:commons-compress:1.26.0")

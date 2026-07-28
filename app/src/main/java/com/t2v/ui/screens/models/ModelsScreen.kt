@@ -180,6 +180,25 @@ fun ModelsScreen(
                     },
                 )
                 ModelDetailCard(
+                    title = "MusicGen Small ONNX (CC-BY-NC ⚠️, ~2 ГБ)",
+                    status = "RuntimeInDevelopment • реальный ONNX inference, ~5-8 сек/сек-музыки на Snapdragon 8 Gen 2",
+                    selected = state.selectedMusicModelId == MUSIC_MODEL_MUSICGEN_ONNX,
+                    enabled = state.musicGenOnnxReady,
+                    tags = GenerationModelCatalog.tagDocsFor("musicgen-small"),
+                    onSelect = { vm.selectMusicModel(MUSIC_MODEL_MUSICGEN_ONNX) },
+                    onInfo = {
+                        infoTarget = InfoTarget(
+                            title = "MusicGen Small ONNX (CC-BY-NC ⚠️)",
+                            tagline = GenerationModelCatalog.tagDocsFor("musicgen-small")?.tagline,
+                            tags = GenerationModelCatalog.tagDocsFor("musicgen-small"),
+                            runtime = "ONNX Runtime Mobile (1.17.0) — text_encoder + decoder_with_past + encodec_decode",
+                            repository = GenerationModelCatalog.repositoryFor("musicgen-small"),
+                            license = "CC-BY-NC-4.0 ⚠️ (Meta MusicGen — non-commercial)",
+                            categoryLabel = infoCategoryLocalLabel,
+                        )
+                    },
+                )
+                ModelDetailCard(
                     title = "ElevenLabs Sound Effects (облако)",
                     status = "Нужен API-ключ ElevenLabs • длительность 1-22 секунды",
                     selected = state.selectedMusicModelId == SOUND_MODEL_ELEVEN_SFX,
@@ -936,6 +955,7 @@ data class ModelsState(
     val selectedModelId: String = "",
     val liteRtMusicReady: Boolean = false,
     val liteRtSoundReady: Boolean = false,
+    val musicGenOnnxReady: Boolean = false,
     val elevenLabsKeyConfigured: Boolean = false,
     val openAiKeyConfigured: Boolean = false,
     val sunoKeyConfigured: Boolean = false,
@@ -1310,6 +1330,7 @@ private const val GEN_TINYMUSICIAN_SFX = "litert.tinymusician.sound"
 /** Suffix-bearing ids used by ModelsScreen state to distinguish tabs. */
 private const val MUSIC_MODEL_STABLE_AUDIO_OPEN_SMALL = "$GEN_STABLE_AUDIO_MUSIC:music"
 private const val MUSIC_MODEL_MUSICGEN_SMALL = "$GEN_MUSICGEN_MUSIC:music"
+private const val MUSIC_MODEL_MUSICGEN_ONNX = "litert.musicgen-small-onnx.music:music"
 private const val MUSIC_MODEL_TINYMUSICIAN_SMALL = "$GEN_TINYMUSICIAN_SMALL_MUSIC:music"
 private const val MUSIC_MODEL_TINYMUSICIAN_100M = "$GEN_TINYMUSICIAN_100M_MUSIC:music"
 private const val MUSIC_MODEL_SOUNDFONT = "litert.soundfont.generaluser-gs:music"

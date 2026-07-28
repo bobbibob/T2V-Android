@@ -6,6 +6,7 @@ import com.t2v.generators.impl.ElevenLabsSoundEffectsGenerator
 import com.t2v.generators.impl.FreesoundSfxGenerator
 import com.t2v.generators.impl.Lyria2MusicGenerator
 import com.t2v.generators.impl.MusicGenMusicGenerator
+import com.t2v.generators.impl.MusicGenOnnxGenerator
 import com.t2v.generators.impl.NSynthSoundGenerator
 import com.t2v.generators.impl.OpenAiMusicGenerator
 import com.t2v.generators.impl.StableAudioCloudGenerator
@@ -50,6 +51,7 @@ class GeneratorRegistry(
         // ── Music generators ────────────────────────────────────────────
         add(StableAudioMusicGenerator(appContext, liteRtRuntime, installer))
         add(MusicGenMusicGenerator(appContext))
+        add(MusicGenOnnxGenerator(appContext))
         add(TinyMusicianMusicGenerator(appContext, liteRtRuntime, installer))
         add(ElevenLabsMusicGenerator(apiKey = elevenKey))
         add(OpenAiMusicGenerator(apiKey = openaiKey))
