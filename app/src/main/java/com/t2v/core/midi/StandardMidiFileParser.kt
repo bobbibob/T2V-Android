@@ -1,7 +1,8 @@
 package com.t2v.core.midi
 
-import java.io.DataInputStream
 import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * Читает Standard MIDI File (SMF) Format 0 / Format 1 в наш
@@ -18,31 +19,31 @@ import java.io.InputStream
 object StandardMidiFileParser {
 
     fun parse(input: InputStream): MidiSequence {
-        val dis = DataInputStream(input)
-        val headerId = dis.readInt()
-        require(headerId == 0x4D546864) { "Not a MIDI file: bad header chunk id" }
-        val headerLen = dis.readInt()
+        val bb = ByteBuffer.wrap(input.readBytes()).order(ByteOrder.LITTLE_ENDIAN)
+        val headerId = bb.int
+        require(headerId == 0x6468744D) { "Not a MIDI file: bad header chunk id 0x${"%08X".format(headerId)}" }
+        val headerLen = bb.int
         require(headerLen == 6) { "Bad header chunk length: $headerLen" }
-        val trackCount = dis.readShort().toInt() and 0xFFFF
-        val division = dis.readShort().toInt() and 0xFFFF
+        val trackCount = bb.short.toInt() and 0xFFFF
+        val division = bb.short.toInt() and 0xFFFF
         require(division and 0x8000 == 0) { "SMPTE timecode not supported" }
         val ticksPerQuarter = division and 0x7FFF
 
         val tracks = mutableListOf<List<RawMidiEvent>>()
         repeat(trackCount) {
-            tracks.add(readTrack(dis))
+            tracks.add(readTrack(bb))
         }
         return mergeTracks(tracks, ticksPerQuarter)
     }
 
-    private fun readTrack(dis: DataInputStream): List<RawMidiEvent> {
-        val trackId = dis.readInt()
-        require(trackId == 0x4D54726B) { "Not a track chunk: 0x${trackId.toString(16)}" }
-        val trackLen = dis.readInt().toLong() and 0xFFFFFFFFL
+    private fun readTrack(bb: ByteBuffer): List<RawMidiEvent> {
+        val trackId = bb.int
+        require(trackId == 0x6B72544D) { "Not a track chunk: 0x${"%08X".format(trackId)}" }
+        val trackLen = bb.int.toLong() and 0xFFFFFFFFL
         // We read the track body into a bounded byte array so we can
         // always know exactly how many bytes are left.
         val trackData = ByteArray(trackLen.toInt())
-        dis.readFully(trackData)
+        bb.get(trackData)
         return parseTrackBytes(trackData)
     }
 
