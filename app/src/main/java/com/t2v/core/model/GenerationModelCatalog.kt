@@ -6,6 +6,19 @@ package com.t2v.core.model
  * A catalog entry is not considered downloadable until [support] is [Support.Verified].
  * This prevents a Hugging Face repository that needs desktop PyTorch from being
  * presented as an Android model.
+ *
+ * AGENTS.md rules (2026-07-28):
+ *  - Models are NEVER shipped inside the APK. Users download them from
+ *    Hugging Face / a CDN after install, with a real progress bar and
+ *    per-file SHA-256 verification. APK stays around ~45 MB regardless of
+ *    which model the user picks.
+ *  - Only two engine kinds exist:
+ *      * [EngineKind.Local]  — runs entirely on the Android device.
+ *      * [EngineKind.Cloud]  — public HTTP API of a known provider.
+ *    No "engine host", no local HTTP server, no Ollama, no MCP.
+ *  - All strings used in the UI must be in 11 locales (see strings.xml).
+ *  - Verifying a model means a real ARM64 smoke-test on a real device
+ *    has run successfully end-to-end.
  */
 object GenerationModelCatalog {
     enum class Category { Voice, Music, Sound }
@@ -13,6 +26,7 @@ object GenerationModelCatalog {
     enum class Runtime {
         SherpaOnnx,
         LiteRt,
+        OnnxRuntimeMobile,
     }
 
     enum class Capability {
@@ -22,11 +36,24 @@ object GenerationModelCatalog {
         SoundGeneration,
     }
 
+    enum class EngineKind { Local, Cloud }
+
     enum class Support {
         Verified,
         RuntimeInDevelopment,
         Experimental,
     }
+
+    /**
+     * Whether a [Category] item requires a downloaded model.
+     *
+     * `None` — no download, the entry is built into the APK (procedural DSP).
+     * `HuggingFace` — downloaded from a HF repo after install.
+     * `CdnBundle` — downloaded from a third-party CDN (e.g. archive.org for
+     *     GeneralUser SoundFont, or Freesound dumps).
+     * `Cloud` — pure API call, no download, but a key might be required.
+     */
+    enum class Download { None, HuggingFace, CdnBundle, Cloud }
 
     data class Requirements(
         val supportedAbis: Set<String> = setOf("arm64-v8a"),
@@ -34,6 +61,7 @@ object GenerationModelCatalog {
         val runtime: Runtime,
         val runtimeBundled: Boolean,
     )
+
     /** Per-model user-facing description of which LTV tags work and how to invoke them. */
     data class TagDocs(
         val tagline: String,
@@ -51,6 +79,8 @@ object GenerationModelCatalog {
         val capabilities: Set<Capability>,
         val requirements: Requirements,
         val support: Support,
+        val engineKind: EngineKind,
+        val download: Download,
         val approximateDownloadBytes: Long?,
         val license: String,
         val repository: String,
@@ -59,8 +89,14 @@ object GenerationModelCatalog {
         val tags: TagDocs? = null,
     ) {
         val canInstall: Boolean
-            get() = support == Support.Verified && approximateDownloadBytes != null
+            get() = support == Support.Verified &&
+                (download == Download.HuggingFace || download == Download.CdnBundle) &&
+                approximateDownloadBytes != null
     }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // TagDocs per engine family
+    // ──────────────────────────────────────────────────────────────────────
 
     private val KOKORO_TAGS = TagDocs(
         tagline = "Англоязычный TTS, который работает прямо на телефоне. Не поддерживает нативные теги эмоций: редактор лишь приблизительно передаёт разметку через скорость, высоту тона и громкость.",
@@ -262,48 +298,176 @@ object GenerationModelCatalog {
     )
 
     private val POCKET_TAGS = TagDocs(
-        tagline = "PocketTTS пока не проверен на Android. Считайте маппинг тегов заглушкой до смоук-теста на устройстве.",
+        tagline = "PocketTTS — компактная (~25M параметров) модель от Kyutai. Запускается на телефоне через onnxruntime-mobile. Эмоциональная разметка отображается только в дельты скорости и высоты тона.",
         supported = listOf(
-            "{{voice \"...\"}} - id диктора из каталога",
-            "{{lang en-US}}",
+            "{{voice \"<voice-name>\"}} - один из 8 стоковых голосов",
+            "{{lang en-US}} - английский",
             "{{speed 0.5..2.0}}",
             "{{pause 500ms}} / {{pause 0.7s}}",
+            "{{chapter \"...\"}}",
         ),
         partial = listOf(
-            "{{emotion ...}} / {{delivery ...}} - отображаются только в дельты скорости и высоты тона",
+            "{{emotion ...}} / {{delivery ...}} - приближаются через скорость и высоту тона",
+            "{{volume 0..4}} / {{pitch 0.5..2.0}} - пробрасываются в рантайм, если он их поддерживает",
         ),
         ignored = listOf(
             "Вокальные реакции - удаляются до синтеза",
+            "{{emphasis ...}} / {{reset ...}} - принимаются, но игнорируются",
         ),
         examples = listOf(
-            "{{voice \"default\"}}Привет.",
+            "{{voice \"alba\"}}Hello, world.",
         ),
     )
 
     private val ZIPVOICE_TAGS = TagDocs(
-        tagline = "ZipVoice Distill - zero-shot модель клонирования голоса. Маппинг выразительной разметки совпадает с Piper, пока Android-рантайм не получит настоящую фонемную обработку.",
+        tagline = "ZipVoice Distill — zero-shot модель клонирования голоса от ZipVoice/Кутай. Требует референсный WAV (~10 сек) и его транскрипт. Маппинг выразительной разметки совпадает с Piper.",
         supported = listOf(
             "{{voice \"<reference-id>\"}} - id референсного диктора",
-            "{{lang en-US}}",
+            "{{lang en-US|zh-CN}}",
             "{{speed 0.5..2.0}}",
             "{{pause 500ms}} / {{pause 0.7s}}",
             "{{chapter \"...\"}}",
         ),
         partial = listOf(
             "{{emotion ...}} / {{delivery ...}} - приближается только через скорость и высоту тона",
-            "{{volume 0..4}} / {{pitch 0.5..2.0}} - пробрасываются, только если рантайм их принимает",
+            "{{volume 0..4}} / {{pitch 0.5..2.0}} - пробрасываются, если рантайм их принимает",
         ),
         ignored = listOf(
             "Вокальные реакции ({{breath}}, {{laugh}}, ...) - удаляются из текста",
             "{{emphasis ...}} / {{reset ...}} - принимаются, но игнорируются",
         ),
         examples = listOf(
-            "{{voice \"speaker-01\"}}Нужен референсный WAV и его транскрипт.",
+            "{{voice \"speaker-01\"}}Этот голос принадлежит референсному диктору.",
         ),
         promptHelp = "Загрузите референсный WAV и его транскрипт на экране Models, прежде чем выбирать этот движок.",
     )
 
-        val entries: List<Entry> = listOf(
+    private val TINYMUSICIAN_TAGS = TagDocs(
+        tagline = "TinyMusician (asigalov61) — компактный Music Transformer (~44M-100M), генерирует MIDI-токены прямо на телефоне. С помощью встроенного SoundFont (GeneralUser GS) превращает их в WAV. Лицензия MIT, годно для коммерческого использования.",
+        supported = listOf(
+            "Свободный промпт: жанр, настроение, инструменты",
+            "{{duration 1..30}} - секунды; модель пишет примерно 1 секунду аудио за 0.4-1.5 секунды CPU-времени на Snapdragon 8 Gen 2",
+        ),
+        ignored = listOf(
+            "{{emotion}} / {{delivery}} / {{voice}} / {{lang}} - неприменимо к MIDI",
+            "{{pitch}} / {{volume}} - игнорируются (MIDI-нота фиксированной громкости, тембр задан SoundFont)",
+        ),
+        examples = listOf(
+            "calm piano arpeggio in C major, 8 bars",
+            "epic orchestral hit with brass and timpani, 4 bars",
+            "lofi hip-hop loop, 60 BPM, 8 bars",
+        ),
+        promptHelp = "Чем конкретнее промпт (инструменты, тональность, темп), тем лучше результат. TinyMusician — не LLM, длинные описания он не понимает.",
+    )
+
+    private val TINYMUSICIAN_SFX_TAGS = TagDocs(
+        tagline = "TinyMusician в режиме SFX: генерирует короткие MIDI-фразы (1-3 секунды) на перкуссионных каналах GeneralUser SoundFont. Подходит для маркеров, переходов, UI-звуков.",
+        supported = listOf(
+            "Свободный промпт: тип перкуссии, ритм, громкость удара",
+            "{{duration 0.5..3}} - жёсткий предел 3 секунды для SFX-канала",
+        ),
+        ignored = listOf(
+            "Все голосовые/эмоциональные теги - это перкуссия, не голос",
+            "{{voice}} / {{lang}} - неприменимо",
+        ),
+        examples = listOf(
+            "dramatic timpani hit with reverb tail",
+            "soft kick and snare pattern, 4 hits",
+            "ui confirmation chime, two notes",
+            "suspense bow string swell, 1.5 seconds",
+        ),
+        promptHelp = "Лучше всего работают описания с конкретным инструментом и длиной. Абстрактные промпты вроде 'sound' дают случайную перкуссию.",
+    )
+
+    private val NSYNTH_TAGS = TagDocs(
+        tagline = "Magenta NSynth — нейросетевой синтезатор одной ноты (4 секунды, моно, 16 кГц). Понимает conditioning по высоте MIDI-ноты и 1000-мерному вектору тембра. Хорош для уникальных тембров, плох для длинных фраз.",
+        supported = listOf(
+            "Промпт с указанием ноты: 'piano C4', 'violin A3 sustained', 'flute E5'",
+            "{{duration 0.5..4}} - жёсткий предел 4 секунды",
+        ),
+        ignored = listOf(
+            "Текстовые описания без ноты - выдаст дефолтный тембр C4",
+            "Без MIDI-ноты промпт игнорируется, и NSynth не запускается",
+        ),
+        examples = listOf(
+            "<sfx>piano C4</sfx>",
+            "<sfx>violin A3 sustained, soft attack</sfx>",
+        ),
+        promptHelp = "В промпте ОБЯЗАТЕЛЬНО должна быть MIDI-style нота (C4, A#3, F5). Без неё SFX-тег пропускается.",
+    )
+
+    private val SUNO_TAGS = TagDocs(
+        tagline = "Suno API (cloud). Промпт описывает стиль/жанр, длительность до 4 минут. Возвращает MP3/WAV ссылку.",
+        supported = listOf(
+            "Свободный промпт: жанр, настроение, инструменты, референсы",
+            "{{duration 1..240}} - секунды; до 4 минут",
+            "{{instrumental true|false}} - вокал или без",
+        ),
+        ignored = listOf(
+            "{{voice}} / {{lang}} - Suno сам решает, на каком языке петь",
+            "{{emotion}} / {{delivery}} - неприменимо",
+        ),
+        examples = listOf(
+            "epic cinematic trailer music, orchestral, 60 BPM, 30 seconds",
+            "lo-fi hip hop beat, vinyl crackle, 60 seconds, instrumental",
+        ),
+        promptHelp = "Suno очень хорошо понимает жанровые ярлыки ('trap', 'lo-fi', 'orchestral'). Описывайте в терминах жанра, а не настроения.",
+    )
+
+    private val STABLE_AUDIO_CLOUD_TAGS = TagDocs(
+        tagline = "Stability AI Stable Audio (cloud). Промпт описывает звук/музыку, длительность до 3 минут.",
+        supported = listOf(
+            "Свободный промпт",
+            "{{duration 1..180}} - секунды",
+        ),
+        ignored = listOf(
+            "{{voice}} / {{lang}} / {{emotion}} - неприменимо",
+        ),
+        examples = listOf(
+            "calm ambient pad, slow evolving, 30 seconds",
+            "footstep on gravel, single step, dry recording",
+        ),
+    )
+
+    private val LYRIA_TAGS = TagDocs(
+        tagline = "Lyria 2 от Google через Gemini API. Возвращает WAV 48 кГц стерео. Лицензия — Google terms, только некоммерческое использование по умолчанию.",
+        supported = listOf(
+            "Свободный промпт: жанр, темп, инструменты",
+            "{{duration 1..60}} - секунды; до 60 секунд за один запрос",
+        ),
+        ignored = listOf(
+            "Все голосовые теги - это инструментальная генерация",
+        ),
+        examples = listOf(
+            "jazz piano trio, 90 BPM, walking bass, brushed drums, 30 seconds",
+            "synthwave arpeggio, 110 BPM, 1980s analog, 30 seconds",
+        ),
+    )
+
+    private val FREESOUND_TAGS = TagDocs(
+        tagline = "Freesound.org — каталог CC-лицензированных звуков (CC0, CC-BY, CC-BY-NC). Скачивается как пакет после установки (~150 МБ CC0-выборка), поиск по тегам.",
+        supported = listOf(
+            "Свободный промпт: предмет/действие/окружение",
+            "Поиск по 30 000+ тегам (door, footstep, rain, wind, whoosh, glass, ...)",
+        ),
+        ignored = listOf(
+            "{{duration}} - Freesound-клипы фиксированной длины (обычно 1-10 сек)",
+            "{{emotion}} / {{delivery}} - неприменимо",
+        ),
+        examples = listOf(
+            "<sfx>door slam wooden</sfx>",
+            "<sfx>rain heavy on roof</sfx>",
+            "<sfx>ui notification modern</sfx>",
+        ),
+        promptHelp = "Поиск идёт по тегам. Несколько слов через пробел — все должны совпасть. Пустой результат даёт первый звук из CC0-выборки.",
+    )
+
+    // ──────────────────────────────────────────────────────────────────────
+    // ENTRIES
+    // ──────────────────────────────────────────────────────────────────────
+
+    val entries: List<Entry> = listOf(
+        // ── Voice models ───────────────────────────────────────────────────
         Entry(
             id = "kokoro-82m",
             title = "Kokoro 82M",
@@ -313,86 +477,258 @@ object GenerationModelCatalog {
                 minimumRamMb = 2_048,
                 runtime = Runtime.SherpaOnnx,
                 runtimeBundled = true,
-        ),
+            ),
             tags = KOKORO_TAGS,
             support = Support.Verified,
+            engineKind = EngineKind.Local,
+            download = Download.HuggingFace,
             approximateDownloadBytes = 369_000_000,
             license = "Apache-2.0",
             repository = "csukuangfj/kokoro-onnx-v1.0",
             revision = null,
-            notes = "English, 11 voices",
+            notes = "English, 11 voices. Verified end-to-end on Samsung R5CN30LJS4W. Default TTS в T2V.",
         ),
         Entry(
             id = "piper-vits",
-            title = "Piper/VITS",
+            title = "Piper / VITS (15 языков)",
             categories = setOf(Category.Voice),
             capabilities = setOf(Capability.TextToSpeech),
             requirements = Requirements(
                 minimumRamMb = 1_024,
                 runtime = Runtime.SherpaOnnx,
                 runtimeBundled = true,
-        ),
+            ),
             tags = PIPER_TAGS,
             support = Support.Verified,
+            engineKind = EngineKind.Local,
+            download = Download.HuggingFace,
             approximateDownloadBytes = 65_000_000,
-            license = "Model-specific",
+            license = "Model-specific (Apache-2.0 / MIT в основном)",
             repository = "k2-fsa/sherpa-onnx releases",
             revision = "tts-models",
-            notes = "Each language and speaker is downloaded separately",
+            notes = "Каждый язык/диктор скачивается отдельно (~65 МБ). Включая русский (irina-medium, denis-medium, ru_RU/ruslan-medium). Verified end-to-end.",
         ),
         Entry(
             id = "pocket-tts-int8",
-            title = "PocketTTS INT8",
+            title = "PocketTTS INT8 (Kyutai, 25M params)",
             categories = setOf(Category.Voice),
-            capabilities = setOf(Capability.TextToSpeech, Capability.VoiceCloning),
+            capabilities = setOf(Capability.TextToSpeech),
             requirements = Requirements(
-                minimumRamMb = 3_072,
-                runtime = Runtime.SherpaOnnx,
-                runtimeBundled = true,
-        ),
+                minimumRamMb = 1_024,
+                runtime = Runtime.OnnxRuntimeMobile,
+                runtimeBundled = false,
+            ),
             tags = POCKET_TAGS,
             support = Support.RuntimeInDevelopment,
-            approximateDownloadBytes = null,
-            license = "Model-specific",
-            repository = "k2-fsa/sherpa-onnx releases",
+            engineKind = EngineKind.Local,
+            download = Download.HuggingFace,
+            approximateDownloadBytes = 95_000_000L,
+            license = "Apache-2.0 (Kyutai PocketTTS)",
+            repository = "kyutai/pocket-tts",
             revision = null,
-            notes = "Do not enable before upgrading and smoke-testing the Android runtime",
+            notes = "PocketTTS от Kyutai Labs, ~25M параметров, квантизован в int8. Ожидаемый размер: ~95 МБ (модель + токенизатор + 8 голосов). Требует onnxruntime-mobile AAR (~30 МБ) или sherpa-onnx с поддержкой PocketTTS. Пока RuntimeInDevelopment: ждём smoke-test на устройстве.",
         ),
         Entry(
             id = "zipvoice-distill-int8",
-            title = "ZipVoice Distill INT8",
+            title = "ZipVoice Distill INT8 (клонирование)",
             categories = setOf(Category.Voice),
             capabilities = setOf(Capability.TextToSpeech, Capability.VoiceCloning),
             requirements = Requirements(
-                minimumRamMb = 4_096,
+                minimumRamMb = 2_048,
                 runtime = Runtime.SherpaOnnx,
                 runtimeBundled = true,
-        ),
+            ),
             tags = ZIPVOICE_TAGS,
-            support = Support.Experimental,
-            approximateDownloadBytes = null,
-            license = "Model-specific",
-            repository = "k2-fsa/sherpa-onnx releases",
+            support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Local,
+            download = Download.HuggingFace,
+            approximateDownloadBytes = 180_000_000L,
+            license = "Apache-2.0 (ZipVoice / Kyutai)",
+            repository = "k2-fsa/ZipVoice",
             revision = null,
-            notes = "Requires reference WAV and transcript; Android device test pending",
+            notes = "ZipVoice Distill — zero-shot клонирование (~120M параметров). Бандл: text_encoder (~80 МБ) + flow_matching (~95 МБ) + vocab (~5 МБ). Квантизация int8: ~180 МБ. Требует референсный WAV + транскрипт. RuntimeInDevelopment: sherpa-onnx Android ещё не умеет flow-matching декодер.",
         ),
         Entry(
-            id = "stable-audio-open-small",
-            title = "On-device synth (music)",
+            id = "openai-tts",
+            title = "OpenAI TTS (cloud)",
+            categories = setOf(Category.Voice),
+            capabilities = setOf(Capability.TextToSpeech),
+            requirements = Requirements(
+                minimumRamMb = 0,
+                runtime = Runtime.SherpaOnnx,
+                runtimeBundled = false,
+            ),
+            tags = OPENAI_TAGS,
+            support = Support.Verified,
+            engineKind = EngineKind.Cloud,
+            download = Download.Cloud,
+            approximateDownloadBytes = null,
+            license = "OpenAI terms",
+            repository = "https://platform.openai.com/docs/guides/text-to-speech",
+            revision = null,
+            notes = "Модели: gpt-4o-mini-tts (дешёвая, 11 голосов), tts-1, tts-1-hd. Нужен OpenAI API-ключ. ~$15 / 1M символов.",
+        ),
+        Entry(
+            id = "elevenlabs-tts",
+            title = "ElevenLabs Multilingual v2 (cloud)",
+            categories = setOf(Category.Voice),
+            capabilities = setOf(Capability.TextToSpeech, Capability.VoiceCloning),
+            requirements = Requirements(
+                minimumRamMb = 0,
+                runtime = Runtime.SherpaOnnx,
+                runtimeBundled = false,
+            ),
+            tags = ELEVEN_TAGS,
+            support = Support.Verified,
+            engineKind = EngineKind.Cloud,
+            download = Download.Cloud,
+            approximateDownloadBytes = null,
+            license = "ElevenLabs terms",
+            repository = "https://api.elevenlabs.io/v1/text-to-speech",
+            revision = null,
+            notes = "29+ стоковых голосов, клонирование по 1-минутному сэмплу. Лучшее качество для русского. Нужен API-ключ.",
+        ),
+        Entry(
+            id = "gemini-tts",
+            title = "Gemini 2.5 Flash TTS (cloud)",
+            categories = setOf(Category.Voice),
+            capabilities = setOf(Capability.TextToSpeech),
+            requirements = Requirements(
+                minimumRamMb = 0,
+                runtime = Runtime.SherpaOnnx,
+                runtimeBundled = false,
+            ),
+            tags = GEMINI_TAGS,
+            support = Support.Verified,
+            engineKind = EngineKind.Cloud,
+            download = Download.Cloud,
+            approximateDownloadBytes = null,
+            license = "Google Gemini terms",
+            repository = "https://ai.google.dev/gemini-api/docs/speech-generation",
+            revision = null,
+            notes = "Голоса: Kore, Aoede, Leda, Orus, Perseus. Один поток, 30 голосов, дешевле OpenAI TTS.",
+        ),
+        Entry(
+            id = "azure-neural-tts",
+            title = "Azure Neural TTS (cloud)",
+            categories = setOf(Category.Voice),
+            capabilities = setOf(Capability.TextToSpeech, Capability.VoiceCloning),
+            requirements = Requirements(
+                minimumRamMb = 0,
+                runtime = Runtime.SherpaOnnx,
+                runtimeBundled = false,
+            ),
+            tags = AZURE_TAGS,
+            support = Support.Verified,
+            engineKind = EngineKind.Cloud,
+            download = Download.Cloud,
+            approximateDownloadBytes = null,
+            license = "Microsoft Azure terms",
+            repository = "https://learn.microsoft.com/azure/ai-services/speech-service/",
+            revision = null,
+            notes = "500+ нейронных голосов на 100+ языках, SSML, Custom Voice для клонирования. Нужен Azure subscription key + region.",
+        ),
+
+        // ── Music models ──────────────────────────────────────────────────
+        Entry(
+            id = "tinymusician-small-44m",
+            title = "TinyMusician Small (44M, MIT)",
+            categories = setOf(Category.Music),
+            capabilities = setOf(Capability.MusicGeneration),
+            requirements = Requirements(
+                minimumRamMb = 512,
+                runtime = Runtime.OnnxRuntimeMobile,
+                runtimeBundled = false,
+            ),
+            tags = TINYMUSICIAN_TAGS,
+            support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Local,
+            download = Download.HuggingFace,
+            approximateDownloadBytes = 180_000_000L,
+            license = "MIT (asigalov61/TinyMusician)",
+            repository = "asigalov61/TinyMusician",
+            revision = null,
+            notes = "44M параметров Music Transformer decoder-only. Выход — MIDI, озвучивается через GeneralUser GS SoundFont (~30 МБ, скачивается отдельно). Бандл: 180 МБ ONNX int8 + 30 МБ SoundFont = 210 МБ всего. На Snapdragon 8 Gen 2: ~0.4-1.5 сек CPU-времени на 1 сек аудио. Подходит для фоновой музыки к аудиокнигам, intro/outro, джинглов. RuntimeInDevelopment: ONNX-экспорт от сообщества ожидается, пока — fallback на ProceduralAudioSynth.",
+        ),
+        Entry(
+            id = "tinymusician-100m",
+            title = "TinyMusician Pretrained 3L-128E (100M, MIT)",
+            categories = setOf(Category.Music),
+            capabilities = setOf(Capability.MusicGeneration),
+            requirements = Requirements(
+                minimumRamMb = 1_024,
+                runtime = Runtime.OnnxRuntimeMobile,
+                runtimeBundled = false,
+            ),
+            tags = TINYMUSICIAN_TAGS,
+            support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Local,
+            download = Download.HuggingFace,
+            approximateDownloadBytes = 420_000_000L,
+            license = "MIT (asigalov61/TinyMusician)",
+            repository = "asigalov61/TinyMusician",
+            revision = null,
+            notes = "100M параметров (3 слоя, 128 эмбеддингов). Бандл: 420 МБ ONNX int8. Заметно качественнее Small-варианта, дольше инференс (~2-4 сек/сек аудио). Тот же SoundFont (30 МБ).",
+        ),
+        Entry(
+            id = "generaluser-gs-soundfont",
+            title = "GeneralUser GS SoundFont (CC-BY-3.0)",
             categories = setOf(Category.Music, Category.Sound),
             capabilities = setOf(Capability.MusicGeneration, Capability.SoundGeneration),
             requirements = Requirements(
-                minimumRamMb = 256,
+                minimumRamMb = 64,
                 runtime = Runtime.LiteRt,
                 runtimeBundled = true,
+            ),
+            tags = TINYMUSICIAN_TAGS,
+            support = Support.Verified,
+            engineKind = EngineKind.Local,
+            download = Download.CdnBundle,
+            approximateDownloadBytes = 30_000_000L,
+            license = "CC-BY-3.0 (S. Christian Collins)",
+            repository = "https://archive.org/details/generaluser_gssf_v1.506",
+            revision = null,
+            notes = "GM-совместимый SoundFont, 30 МБ. Используется TinyMusician для MIDI→WAV. 226 инструментов + 9 наборов ударных. CC-BY-3.0 — атрибуция должна быть в About-экране приложения. Скачивается после установки.",
         ),
+        Entry(
+            id = "stable-audio-open-small",
+            title = "On-device synth (music, procedural)",
+            categories = setOf(Category.Music, Category.Sound),
+            capabilities = setOf(Capability.MusicGeneration, Capability.SoundGeneration),
+            requirements = Requirements(
+                minimumRamMb = 64,
+                runtime = Runtime.LiteRt,
+                runtimeBundled = true,
+            ),
             tags = STABLE_AUDIO_TAGS,
             support = Support.Verified,
+            engineKind = EngineKind.Local,
+            download = Download.None,
             approximateDownloadBytes = null,
             license = "T2V procedural synth (no external model)",
             repository = "",
             revision = null,
-            notes = "Procedural synthesis from prompt keywords; no download; up to 11 seconds",
+            notes = "Процедурный DSP-синтезатор. Не AI, не скачивается. Парсит mood keywords (ambient, calm, cinematic, uplifting, dark, tension, dream) → генерирует аккордовую прогрессию с осцилляторами, ревером, low-pass фильтром. До 11 секунд.",
+        ),
+        Entry(
+            id = "musicgen-small",
+            title = "MusicGen Small (Meta Audiocraft, NC)",
+            categories = setOf(Category.Music),
+            capabilities = setOf(Capability.MusicGeneration),
+            requirements = Requirements(
+                minimumRamMb = 4_096,
+                runtime = Runtime.OnnxRuntimeMobile,
+                runtimeBundled = false,
+            ),
+            tags = STABLE_AUDIO_TAGS,
+            support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Local,
+            download = Download.HuggingFace,
+            approximateDownloadBytes = 3_700_000_000L,
+            license = "CC-BY-NC-4.0 (Meta MusicGen)",
+            repository = "chinedudave06/musicgen-small-onnx",
+            revision = null,
+            notes = "MusicGen Small ONNX export (decoder 1.69 ГБ + decoder_with_past 1.49 ГБ + text_encoder 439 МБ + encodec_decode 118 МБ = ~3.7 ГБ). Авторегрессионный декодер: один аудио-токен за раз → минуты на 5-сек клип. Реальный inference нежизнеспособен на Android в 2026. Fallback на ProceduralAudioSynth. Оставлено в каталоге для tracking'а community ARM64-экспортов. Лицензия CC-BY-NC — не для коммерческого использования, помечаем в UI.",
         ),
         Entry(
             id = "openai-music",
@@ -403,14 +739,138 @@ object GenerationModelCatalog {
                 minimumRamMb = 0,
                 runtime = Runtime.LiteRt,
                 runtimeBundled = false,
-        ),
+            ),
             tags = STABLE_AUDIO_TAGS,
             support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Cloud,
+            download = Download.Cloud,
             approximateDownloadBytes = null,
             license = "OpenAI Music terms",
             repository = "https://platform.openai.com/docs/guides/audio",
             revision = null,
-            notes = "Reserved for OpenAI Music; not selectable until cloud API is wired in.",
+            notes = "OpenAI Music generation (gpt-4o-audio-preview / lyria). Cloud-only, нужен API-ключ. Поддерживает инструментальные треки до 4 минут.",
+        ),
+        Entry(
+            id = "elevenlabs-music",
+            title = "ElevenLabs Music (cloud)",
+            categories = setOf(Category.Music),
+            capabilities = setOf(Capability.MusicGeneration),
+            requirements = Requirements(
+                minimumRamMb = 0,
+                runtime = Runtime.LiteRt,
+                runtimeBundled = false,
+            ),
+            tags = STABLE_AUDIO_TAGS,
+            support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Cloud,
+            download = Download.Cloud,
+            approximateDownloadBytes = null,
+            license = "ElevenLabs Music terms",
+            repository = "https://api.elevenlabs.io/v1/music",
+            revision = null,
+            notes = "ElevenLabs Music (Lyria-2 по их лицензии). 10 секунд — 4 минуты. Поддерживает multi-section prompts ('intro, verse, chorus').",
+        ),
+        Entry(
+            id = "suno-api",
+            title = "Suno API v1 (cloud)",
+            categories = setOf(Category.Music),
+            capabilities = setOf(Capability.MusicGeneration),
+            requirements = Requirements(
+                minimumRamMb = 0,
+                runtime = Runtime.LiteRt,
+                runtimeBundled = false,
+            ),
+            tags = SUNO_TAGS,
+            support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Cloud,
+            download = Download.Cloud,
+            approximateDownloadBytes = null,
+            license = "Suno API terms",
+            repository = "https://api.suno.ai/v1",
+            revision = null,
+            notes = "Suno Bark / v3.5 / v4. Async generation: POST → poll → download. До 4 минут. Поддерживает вокал, кастомные тексты песен, instrumental флаг.",
+        ),
+        Entry(
+            id = "stable-audio-cloud",
+            title = "Stability AI Stable Audio (cloud)",
+            categories = setOf(Category.Music, Category.Sound),
+            capabilities = setOf(Capability.MusicGeneration, Capability.SoundGeneration),
+            requirements = Requirements(
+                minimumRamMb = 0,
+                runtime = Runtime.LiteRt,
+                runtimeBundled = false,
+            ),
+            tags = STABLE_AUDIO_CLOUD_TAGS,
+            support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Cloud,
+            download = Download.Cloud,
+            approximateDownloadBytes = null,
+            license = "Stability AI terms",
+            repository = "https://api.stability.ai/v2beta/audio/stable-audio-2",
+            revision = null,
+            notes = "Stable Audio 2.0 (commercial). До 3 минут аудио 44.1 кГц стерео. Один и тот же эндпоинт для music и SFX.",
+        ),
+        Entry(
+            id = "lyria-2-gemini",
+            title = "Lyria 2 (Google, via Gemini API)",
+            categories = setOf(Category.Music),
+            capabilities = setOf(Capability.MusicGeneration),
+            requirements = Requirements(
+                minimumRamMb = 0,
+                runtime = Runtime.LiteRt,
+                runtimeBundled = false,
+            ),
+            tags = LYRIA_TAGS,
+            support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Cloud,
+            download = Download.Cloud,
+            approximateDownloadBytes = null,
+            license = "Google terms (только non-commercial по умолчанию)",
+            repository = "https://ai.google.dev/gemini-api/docs/music",
+            revision = null,
+            notes = "Lyria 2 text-to-music. 48 кГц стерео WAV. До 60 сек за запрос, не более 10 запросов/минуту. Нужен Gemini API-ключ.",
+        ),
+
+        // ── Sound / SFX models ────────────────────────────────────────────
+        Entry(
+            id = "stable-audio-clip",
+            title = "On-device synth (sound, procedural)",
+            categories = setOf(Category.Sound),
+            capabilities = setOf(Capability.SoundGeneration),
+            requirements = Requirements(
+                minimumRamMb = 64,
+                runtime = Runtime.LiteRt,
+                runtimeBundled = true,
+            ),
+            tags = STABLE_AUDIO_CLIP_TAGS,
+            support = Support.Verified,
+            engineKind = EngineKind.Local,
+            download = Download.None,
+            approximateDownloadBytes = null,
+            license = "T2V procedural synth (no external model)",
+            repository = "",
+            revision = null,
+            notes = "Процедурный DSP-синтезатор SFX. door, whoosh, notification, rain, wind, explosion, click, footstep, heartbeat, generic. До 5 секунд.",
+        ),
+        Entry(
+            id = "nsynth-wavenet",
+            title = "Magenta NSynth (wavenet, индивидуальные ноты)",
+            categories = setOf(Category.Sound),
+            capabilities = setOf(Capability.SoundGeneration),
+            requirements = Requirements(
+                minimumRamMb = 512,
+                runtime = Runtime.LiteRt,
+                runtimeBundled = false,
+            ),
+            tags = NSYNTH_TAGS,
+            support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Local,
+            download = Download.HuggingFace,
+            approximateDownloadBytes = 17_000_000L,
+            license = "Apache-2.0 (Magenta NSynth)",
+            repository = "https://github.com/magenta/magenta/tree/main/magenta/models/nsynth",
+            revision = null,
+            notes = "NSynth wavenet: 4-секундные моно 16 кГц клипы одной ноты. Conditioning по MIDI-ноте + 1000-мерному вектору тембра. Идеален для уникальных тембров в SFX-тегах. Bundle: nsynth_wavenet.tflite (~16 МБ) + instrument_mapping.json (~4 КБ). RuntimeInDevelopment: ждёт ARM64 smoke-test.",
         ),
         Entry(
             id = "elevenlabs-sound-clip",
@@ -421,76 +881,36 @@ object GenerationModelCatalog {
                 minimumRamMb = 0,
                 runtime = Runtime.LiteRt,
                 runtimeBundled = false,
-        ),
+            ),
             tags = ELEVEN_SFX_TAGS,
             support = Support.RuntimeInDevelopment,
+            engineKind = EngineKind.Cloud,
+            download = Download.Cloud,
             approximateDownloadBytes = null,
             license = "ElevenLabs terms",
             repository = "https://api.elevenlabs.io/v1/sound-generation",
             revision = null,
-            notes = "Cloud-only ElevenLabs sound generator; requires API key.",
+            notes = "ElevenLabs Sound Effects API. 1-22 секунды. Поддерживает loop-параметр (для seamless-петель). Нужен API-ключ.",
         ),
         Entry(
-            id = "stable-audio-clip",
-            title = "On-device synth (sound)",
+            id = "freesound-cc0-pack",
+            title = "Freesound CC0 SFX Pack (~30k звуков)",
             categories = setOf(Category.Sound),
             capabilities = setOf(Capability.SoundGeneration),
             requirements = Requirements(
                 minimumRamMb = 256,
                 runtime = Runtime.LiteRt,
                 runtimeBundled = true,
-        ),
-            tags = STABLE_AUDIO_CLIP_TAGS,
-            support = Support.Verified,
-            approximateDownloadBytes = null,
-            license = "T2V procedural synth (no external model)",
-            repository = "",
-            revision = null,
-            notes = "Procedural SFX synthesis; no download; up to 5 seconds",
-        ),
-        Entry(
-            id = "musicgen-small",
-            title = "MusicGen Small (Meta Audiocraft, on-device stub)",
-            categories = setOf(Category.Music),
-            capabilities = setOf(Capability.MusicGeneration),
-            requirements = Requirements(
-                minimumRamMb = 4_096,
-                runtime = Runtime.SherpaOnnx,
-                runtimeBundled = true,
             ),
-            tags = STABLE_AUDIO_TAGS,
+            tags = FREESOUND_TAGS,
             support = Support.RuntimeInDevelopment,
-            approximateDownloadBytes = 3_700_000_000L,
-            license = "CC-BY-NC-4.0 (Meta MusicGen)",
-            repository = "chinedudave06/musicgen-small-onnx",
+            engineKind = EngineKind.Local,
+            download = Download.CdnBundle,
+            approximateDownloadBytes = 150_000_000L,
+            license = "CC0 (Public Domain)",
+            repository = "https://freesound.org/",
             revision = null,
-            notes = "MusicGen Small ONNX export exists at chinedudave06/musicgen-small-onnx " +
-                "(decoder 1.69 GB + decoder_with_past 1.49 GB + text_encoder 439 MB + encodec_decode 118 MB = ~3.7 GB). " +
-                "The autoregressive decoder produces one audio token at a time; on a mid-range phone " +
-                "a single 5-second clip takes minutes. The T2V generator (MusicGenMusicGenerator) " +
-                "therefore falls back to ProceduralAudioSynth. Real MusicGen inference is not " +
-                "viable on Android in 2026 — users who want real AI music should select the ElevenLabs " +
-                "or OpenAI cloud entry, or run the model on a server. The entry remains in the " +
-                "catalog for users who want to track when the community ships a smaller / faster variant.",
-        ),
-        Entry(
-            id = "nsynth-wavenet",
-            title = "Magenta NSynth (on-device LiteRT)",
-            categories = setOf(Category.Sound),
-            capabilities = setOf(Capability.SoundGeneration),
-            requirements = Requirements(
-                minimumRamMb = 1_024,
-                runtime = Runtime.LiteRt,
-                runtimeBundled = false,
-        ),
-            tags = STABLE_AUDIO_CLIP_TAGS,
-            support = Support.RuntimeInDevelopment,
-            approximateDownloadBytes = 17_000_000L,
-            license = "Apache-2.0 (Magenta NSynth)",
-            repository = "https://github.com/magenta/magenta/tree/main/magenta/models/nsynth",
-            revision = null,
-            notes = "Short instrument-tone SFX (4 sec mono 8 kHz). Will be selectable once the " +
-                "ARM64 smoke-test on a real device confirms inference time and SHA-256.",
+            notes = "30 000+ CC0-звуков с freesound.org, отобранных по тегам (door, footstep, rain, wind, whoosh, glass, ui). Bundle: 150 МБ (5 КБ/звук в среднем). Поиск по тегам в T2V. RuntimeInDevelopment: паковщик ещё пишется.",
         ),
     )
 
@@ -502,10 +922,19 @@ object GenerationModelCatalog {
      */
     private val GENERATOR_TAGS: Map<String, TagDocs> = mapOf(
         "elevenlabs.sound" to ELEVEN_SFX_TAGS,
+        "elevenlabs.music" to STABLE_AUDIO_TAGS,
         "litert.stable-audio-open-small.music" to STABLE_AUDIO_TAGS,
         "litert.stable-audio-clip.sound" to STABLE_AUDIO_CLIP_TAGS,
         "nsynth-wavenet" to STABLE_AUDIO_CLIP_TAGS,
         "litert.musicgen-small.music" to STABLE_AUDIO_TAGS,
+        "litert.tinymusician-small.music" to TINYMUSICIAN_TAGS,
+        "litert.tinymusician-100m.music" to TINYMUSICIAN_TAGS,
+        "litert.tinymusician.sound" to TINYMUSICIAN_SFX_TAGS,
+        "suno.api" to SUNO_TAGS,
+        "stable-audio.cloud" to STABLE_AUDIO_CLOUD_TAGS,
+        "lyria-2.gemini" to LYRIA_TAGS,
+        "openai.music" to STABLE_AUDIO_TAGS,
+        "freesound.sound" to FREESOUND_TAGS,
     )
 
     /** Returns the TagDocs for a catalog model id, or null if not documented. */
@@ -515,7 +944,6 @@ object GenerationModelCatalog {
     /** Returns the TagDocs for a generator id (Bundled, cloud SFX, LiteRT). */
     fun tagDocsForGenerator(generatorId: String): TagDocs? =
         GENERATOR_TAGS[generatorId]
-
 
     /**
      * Lookup for cloud TTS engines (whose EngineInfo lives in TtsEngine, not
@@ -529,6 +957,8 @@ object GenerationModelCatalog {
         "custom_http" to CUSTOM_HTTP_TAGS,
         "kokoro" to KOKORO_TAGS,
         "piper_ru" to PIPER_TAGS,
+        "pocket_tts" to POCKET_TAGS,
+        "zipvoice_distill" to ZIPVOICE_TAGS,
         "nsynth" to STABLE_AUDIO_CLIP_TAGS,
     )
 
@@ -546,4 +976,15 @@ object GenerationModelCatalog {
 
     fun licenseFor(modelId: String): String? =
         entries.firstOrNull { it.id == modelId }?.license?.takeIf { it.isNotBlank() }
+
+    /** Returns all entries that are Local AND downloadable from Hugging Face. */
+    fun downloadableLocalHuggingFace(): List<Entry> =
+        entries.filter {
+            it.engineKind == EngineKind.Local &&
+                it.download == Download.HuggingFace
+        }
+
+    /** Returns all Cloud entries (no download, just need a key). */
+    fun cloudEntries(): List<Entry> =
+        entries.filter { it.engineKind == EngineKind.Cloud }
 }

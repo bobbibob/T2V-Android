@@ -200,6 +200,101 @@ fun ModelsScreen(
                 )
             }
 
+                ModelDetailCard(
+                    title = "ElevenLabs Music (облако)",
+                    status = "Нужен API-ключ ElevenLabs • до 4 минут • multi-section prompts",
+                    selected = state.selectedMusicModelId == MUSIC_MODEL_ELEVENLABS_MUSIC,
+                    enabled = state.elevenLabsKeyConfigured,
+                    tags = GenerationModelCatalog.tagDocsForGenerator("elevenlabs.music"),
+                    onSelect = { vm.selectMusicModel(MUSIC_MODEL_ELEVENLABS_MUSIC) },
+                    onInfo = {
+                        infoTarget = InfoTarget(
+                            title = "ElevenLabs Music (облако)",
+                            tagline = GenerationModelCatalog.tagDocsForGenerator("elevenlabs.music")?.tagline,
+                            tags = GenerationModelCatalog.tagDocsForGenerator("elevenlabs.music"),
+                            runtime = "ElevenLabs Music API (Lyria-2)",
+                            repository = "https://api.elevenlabs.io/v1/music",
+                            license = "Условия ElevenLabs Music",
+                            categoryLabel = infoCategoryCloudLabel,
+                        )
+                    },
+                )
+                ModelDetailCard(
+                    title = "OpenAI Music (облако, preview)",
+                    status = "Нужен OpenAI API-ключ • gpt-4o-audio-preview / lyria",
+                    selected = state.selectedMusicModelId == MUSIC_MODEL_OPENAI_MUSIC,
+                    enabled = state.openAiKeyConfigured,
+                    tags = GenerationModelCatalog.tagDocsForGenerator("openai.music"),
+                    onSelect = { vm.selectMusicModel(MUSIC_MODEL_OPENAI_MUSIC) },
+                    onInfo = {
+                        infoTarget = InfoTarget(
+                            title = "OpenAI Music (облако)",
+                            tagline = GenerationModelCatalog.tagDocsForGenerator("openai.music")?.tagline,
+                            tags = GenerationModelCatalog.tagDocsForGenerator("openai.music"),
+                            runtime = "OpenAI Audio Generation API",
+                            repository = "https://platform.openai.com/docs/guides/audio",
+                            license = "Условия OpenAI",
+                            categoryLabel = infoCategoryCloudLabel,
+                        )
+                    },
+                )
+                ModelDetailCard(
+                    title = "Suno API v1 (облако, async)",
+                    status = "Нужен Suno API-ключ • до 4 минут • вокал/instrumental",
+                    selected = state.selectedMusicModelId == MUSIC_MODEL_SUNO,
+                    enabled = state.sunoKeyConfigured,
+                    tags = GenerationModelCatalog.tagDocsForGenerator("suno.api"),
+                    onSelect = { vm.selectMusicModel(MUSIC_MODEL_SUNO) },
+                    onInfo = {
+                        infoTarget = InfoTarget(
+                            title = "Suno API (облако)",
+                            tagline = GenerationModelCatalog.tagDocsForGenerator("suno.api")?.tagline,
+                            tags = GenerationModelCatalog.tagDocsForGenerator("suno.api"),
+                            runtime = "Suno API v1 (POST → poll → download)",
+                            repository = "https://api.suno.ai/v1",
+                            license = "Условия Suno",
+                            categoryLabel = infoCategoryCloudLabel,
+                        )
+                    },
+                )
+                ModelDetailCard(
+                    title = "Lyria 2 — Google Gemini (облако)",
+                    status = "Нужен Google API-ключ • 48 кГц стерео WAV • до 60 секунд",
+                    selected = state.selectedMusicModelId == MUSIC_MODEL_LYRIA2,
+                    enabled = state.googleKeyConfigured,
+                    tags = GenerationModelCatalog.tagDocsForGenerator("lyria-2.gemini"),
+                    onSelect = { vm.selectMusicModel(MUSIC_MODEL_LYRIA2) },
+                    onInfo = {
+                        infoTarget = InfoTarget(
+                            title = "Lyria 2 (Google, via Gemini API)",
+                            tagline = GenerationModelCatalog.tagDocsForGenerator("lyria-2.gemini")?.tagline,
+                            tags = GenerationModelCatalog.tagDocsForGenerator("lyria-2.gemini"),
+                            runtime = "Google Lyria 2 через Gemini API",
+                            repository = "https://ai.google.dev/gemini-api/docs/music",
+                            license = "Google terms (non-commercial)",
+                            categoryLabel = infoCategoryCloudLabel,
+                        )
+                    },
+                )
+                ModelDetailCard(
+                    title = "Stable Audio (Stability, облако)",
+                    status = "Нужен Stability API-ключ • до 3 минут • один эндпоинт для music и SFX",
+                    selected = state.selectedMusicModelId == MUSIC_MODEL_STABLE_AUDIO_CLOUD,
+                    enabled = state.stabilityKeyConfigured,
+                    tags = GenerationModelCatalog.tagDocsForGenerator("stable-audio.cloud"),
+                    onSelect = { vm.selectMusicModel(MUSIC_MODEL_STABLE_AUDIO_CLOUD) },
+                    onInfo = {
+                        infoTarget = InfoTarget(
+                            title = "Stable Audio (Stability, облако)",
+                            tagline = GenerationModelCatalog.tagDocsForGenerator("stable-audio.cloud")?.tagline,
+                            tags = GenerationModelCatalog.tagDocsForGenerator("stable-audio.cloud"),
+                            runtime = "Stability AI Stable Audio 2.0",
+                            repository = "https://api.stability.ai/v2beta/audio/stable-audio-2",
+                            license = "Условия Stability AI",
+                            categoryLabel = infoCategoryCloudLabel,
+                        )
+                    },
+                )
             if (selectedTab == ModelTab.Sound) {
                 ModelDetailCard(
                     title = "Локальный синтезатор (звуки)",
@@ -842,6 +937,13 @@ data class ModelsState(
     val liteRtMusicReady: Boolean = false,
     val liteRtSoundReady: Boolean = false,
     val elevenLabsKeyConfigured: Boolean = false,
+    val openAiKeyConfigured: Boolean = false,
+    val sunoKeyConfigured: Boolean = false,
+    val googleKeyConfigured: Boolean = false,
+    val stabilityKeyConfigured: Boolean = false,
+    val soundFontReady: Boolean = false,
+    val nSynthReady: Boolean = false,
+    val freesoundReady: Boolean = false,
     val selectedVoiceModelId: String = "",
     val selectedMusicModelId: String = "",
     val selectedSoundModelId: String = "",
@@ -912,6 +1014,13 @@ class ModelsViewModel(private val context: android.content.Context) : ViewModel(
                             .forCategory(com.t2v.generators.GeneratorCategory.Sound)
                             .any { it.id == "litert.stable-audio-clip.sound" },
                         elevenLabsKeyConfigured = value.engines["elevenlabs"]?.get("apiKey").orEmpty().isNotBlank(),
+                        openAiKeyConfigured = value.engines["openai"]?.get("apiKey").orEmpty().isNotBlank(),
+                        sunoKeyConfigured = value.engines["suno"]?.get("apiKey").orEmpty().isNotBlank(),
+                        googleKeyConfigured = value.engines["google"]?.get("apiKey").orEmpty().isNotBlank(),
+                        stabilityKeyConfigured = value.engines["stability"]?.get("apiKey").orEmpty().isNotBlank(),
+                        soundFontReady = false,
+                        nSynthReady = false,
+                        freesoundReady = false,
                         modelsTreeUri = value.modelsTreeUri,
                         installed = repository().installed(),
                         installedRussianVoices = installedRussianVoiceIds(),
@@ -1184,14 +1293,29 @@ private const val GEN_STABLE_AUDIO_MUSIC = "litert.stable-audio-open-small.music
 private const val GEN_MUSICGEN_MUSIC = "litert.musicgen-small.music"
 private const val GEN_STABLE_AUDIO_SOUND = "litert.stable-audio-clip.sound"
 private const val GEN_ELEVENLABS_SOUND = "elevenlabs.sound"
+private const val GEN_TINYMUSICIAN_SMALL_MUSIC = "litert.tinymusician-small.music"
+private const val GEN_TINYMUSICIAN_100M_MUSIC = "litert.tinymusician-100m.music"
+private const val GEN_TINYMUSICIAN_SFX = "litert.tinymusician.sound"
 // Bundled placeholder generators were removed in favour of the
 // LiteRT-based runtime (NSynth for sound, procedural for music).
 
 /** Suffix-bearing ids used by ModelsScreen state to distinguish tabs. */
 private const val MUSIC_MODEL_STABLE_AUDIO_OPEN_SMALL = "$GEN_STABLE_AUDIO_MUSIC:music"
 private const val MUSIC_MODEL_MUSICGEN_SMALL = "$GEN_MUSICGEN_MUSIC:music"
+private const val MUSIC_MODEL_TINYMUSICIAN_SMALL = "$GEN_TINYMUSICIAN_SMALL_MUSIC:music"
+private const val MUSIC_MODEL_TINYMUSICIAN_100M = "$GEN_TINYMUSICIAN_100M_MUSIC:music"
+private const val MUSIC_MODEL_SOUNDFONT = "litert.soundfont.generaluser-gs:music"
+private const val MUSIC_MODEL_ELEVENLABS_MUSIC = "elevenlabs.music:music"
+private const val MUSIC_MODEL_OPENAI_MUSIC = "openai.music:music"
+private const val MUSIC_MODEL_SUNO = "suno.api:music"
+private const val MUSIC_MODEL_LYRIA2 = "lyria-2.gemini:music"
+private const val MUSIC_MODEL_STABLE_AUDIO_CLOUD = "stable-audio.cloud:music"
 private const val SOUND_MODEL_STABLE_AUDIO_CLIP = "$GEN_STABLE_AUDIO_SOUND:sound"
+private const val SOUND_MODEL_TINYMUSICIAN_SFX = "$GEN_TINYMUSICIAN_SFX:sound"
+private const val SOUND_MODEL_NSYNTH = "nsynth-wavenet:sound"
+private const val SOUND_MODEL_FREESOUND = "freesound.sound:sound"
 private const val SOUND_MODEL_ELEVEN_SFX = "$GEN_ELEVENLABS_SOUND:sound"
+private const val SOUND_MODEL_STABLE_AUDIO_CLOUD = "stable-audio.cloud:sound"
 
 private fun formatBytes(bytes: Long): String {
     if (bytes <= 0) return "size unknown"

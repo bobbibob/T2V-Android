@@ -108,6 +108,9 @@ fun SettingsScreen(
             PasswordField("Hugging Face Token (optional)", state.settings.engines["huggingface"]?.get("token").orEmpty()) { v ->
                 vm.setApiKey("huggingface", v, "token")
             }
+            PasswordField("Google API Key (Gemini TTS / Lyria 2)", state.settings.engines["google"]?.get("apiKey").orEmpty()) { v -> vm.setApiKey("google", v) }
+            PasswordField("Suno API Key (music generation)", state.settings.engines["suno"]?.get("apiKey").orEmpty()) { v -> vm.setApiKey("suno", v) }
+            PasswordField("Stability AI API Key (Stable Audio)", state.settings.engines["stability"]?.get("apiKey").orEmpty()) { v -> vm.setApiKey("stability", v) }
             OutlinedTextField(
                 value = state.settings.engines["azure"]?.get("region").orEmpty(),
                 onValueChange = { vm.setApiKey("azure", it, "region") },
@@ -209,6 +212,9 @@ class SettingsViewModel(private val context: android.content.Context) : ViewMode
                 "azure" -> if (field == "region") it[SettingsRepository.Keys.AZURE_REGION] = v
                 else it[SettingsRepository.Keys.AZURE_KEY] = v
                 "huggingface" -> it[SettingsRepository.Keys.HUGGING_FACE_TOKEN] = v
+                "google" -> it[SettingsRepository.Keys.GOOGLE_KEY] = v
+                "suno" -> it[SettingsRepository.Keys.SUNO_KEY] = v
+                "stability" -> it[SettingsRepository.Keys.STABILITY_KEY] = v
             }
         }
     }

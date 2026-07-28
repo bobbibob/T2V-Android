@@ -228,3 +228,75 @@ infrastructure. Если проблема повторится — отменя�
 4. Зафиксировать новые ограничения пользователя дословно по смыслу.
 5. Указать известный дефект и ближайшее конкретное действие.
 6. Не удалять важную историю решений, пока ветка не слита и не выпущена.
+
+---
+
+## Каталог моделей 2026-07-28 (обновлено)
+
+### Все 23 записи в `GenerationModelCatalog.entries`
+
+**Voice (8):**
+- Local: `kokoro-82m` (Verified, 369 МБ), `piper-vits` (Verified, 65 МБ × голос),
+  `pocket-tts-int8` (RuntimeInDev, 95 МБ), `zipvoice-distill-int8` (RuntimeInDev, 180 МБ)
+- Cloud: `openai-tts` (Verified), `elevenlabs-tts` (Verified), `gemini-tts` (Verified),
+  `azure-neural-tts` (Verified)
+
+**Music (10):**
+- Local: `tinymusician-small-44m` (RuntimeInDev, 180 МБ, MIT),
+  `tinymusician-100m` (RuntimeInDev, 420 МБ, MIT),
+  `generaluser-gs-soundfont` (Verified, 30 МБ, CC-BY-3.0),
+  `stable-audio-open-small` (Verified, 0, procedural DSP),
+  `musicgen-small` (RuntimeInDev, 3.7 ГБ, CC-BY-NC-4.0 ⚠️ non-commercial)
+- Cloud: `openai-music`, `elevenlabs-music`, `suno-api`, `stable-audio-cloud`,
+  `lyria-2-gemini` (Lyria 2 = Google, non-commercial по умолчанию)
+
+**Sound (5):**
+- Local: `stable-audio-clip` (Verified, 0, procedural),
+  `nsynth-wavenet` (RuntimeInDev, 17 МБ, Apache-2.0),
+  `freesound-cc0-pack` (RuntimeInDev, 150 МБ, CC0)
+- Cloud: `elevenlabs-sound-clip`, `stable-audio-cloud`
+
+### Новые enum в `Entry`
+
+```kotlin
+enum class EngineKind { Local, Cloud }   // Где выполняется
+enum class Download { None, HuggingFace, CdnBundle, Cloud }   // Откуда качается
+```
+
+### Удалено
+
+- ~~`magenta-realtime-2`~~ — 1.5 ГБ, нет LiteRT-экспорта от Google,
+  авторегрессионный декодер на Java нереалистичен для Android 2026.
+  Заменён на TinyMusician (210 МБ total, MIT).
+- ~~`bundled-music` / `bundled-sound`~~ — удалены ещё 2026-07-27.
+
+### 7 новых скаффолдов `Generator` (2026-07-28)
+
+| Файл | ID | Тип | Статус |
+|---|---|---|---|
+| `TinyMusicianMusicGenerator.kt` | `litert.tinymusician-small.music` | Local | Scaffold, fallback на procedural |
+| `TinyMusicianSfxGenerator.kt` | `litert.tinymusician.sound` | Local | Scaffold, fallback на procedural |
+| `ElevenLabsMusicGenerator.kt` | `elevenlabs.music` | Cloud | Готов к вызову, нужен API-ключ |
+| `OpenAiMusicGenerator.kt` | `openai.music` | Cloud | Endpoint нестабилен, выдаёт понятную ошибку |
+| `SunoMusicGenerator.kt` | `suno.api` | Cloud | Async POST→poll→download, scaffold |
+| `StableAudioCloudGenerator.kt` | `stable-audio.cloud` | Cloud | Полный HTTP-клиент готов |
+| `Lyria2MusicGenerator.kt` | `lyria-2.gemini` | Cloud | Полный HTTP-клиент готов |
+| `FreesoundSfxGenerator.kt` | `freesound.sound` | Local | Scaffold, нужен CC0-паковщик |
+
+### Новые SettingsRepository.Keys (API-ключи)
+
+```kotlin
+val GOOGLE_KEY = stringPreferencesKey("engines.google.apiKey")
+val SUNO_KEY = stringPreferencesKey("engines.suno.apiKey")
+val STABILITY_KEY = stringPreferencesKey("engines.stability.apiKey")
+```
+
+Поля в `SettingsScreen` для ввода этих ключей уже добавлены.
+
+### Что отложено до следующих итераций
+
+- Реальный TinyMusician inference (ждём ONNX int8 export от сообщества)
+- Реальный ZipVoice inference (ждём sherpa-onnx Android runtime update)
+- Реальный Freesound CC0 паковщик (нужен скрипт, ~2-3 дня работы)
+- ElevenLabs Clone UI fix (был revertнут)
+- G2P для Kokoro (eSpeak-ng, espeak-ng-data уже скачивается)

@@ -63,6 +63,9 @@ class SettingsRepository(private val context: Context) {
         val AZURE_REGION = stringPreferencesKey("engines.azure.region")
         val CUSTOM_URL = stringPreferencesKey("engines.custom_http.url")
         val HUGGING_FACE_TOKEN = stringPreferencesKey("huggingface.token")
+        val GOOGLE_KEY = stringPreferencesKey("engines.google.apiKey")
+        val SUNO_KEY = stringPreferencesKey("engines.suno.apiKey")
+        val STABILITY_KEY = stringPreferencesKey("engines.stability.apiKey")
         val PREFERRED_LOCAL_VOICE = stringPreferencesKey("preferred_local_voice")
         val PREFERRED_LOCAL_VOICE_LABEL = stringPreferencesKey("preferred_local_voice_label")
     }
@@ -148,6 +151,9 @@ class SettingsRepository(private val context: Context) {
             ),
             "custom_http" to mapOf("url" to (this[Keys.CUSTOM_URL] ?: "")),
             "huggingface" to mapOf("token" to (this[Keys.HUGGING_FACE_TOKEN] ?: "")),
+            "google" to mapOf("apiKey" to (this[Keys.GOOGLE_KEY] ?: "")),
+            "suno" to mapOf("apiKey" to (this[Keys.SUNO_KEY] ?: "")),
+            "stability" to mapOf("apiKey" to (this[Keys.STABILITY_KEY] ?: "")),
         ),
     )
 }

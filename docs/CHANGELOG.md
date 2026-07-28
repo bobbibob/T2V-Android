@@ -165,3 +165,57 @@
 - Background WorkManager (каркас GenerationService есть).
 - Подписка / монетизация (отложено).
 - Модели в APK (пользователь скачивает сам).
+
+## [Unreleased] - 2026-07-28 (continued)
+
+### Added (Models v0.3.0: полный каталог)
+
+- **Расширен каталог `GenerationModelCatalog` до 23 записей**:
+  - **Voice (8)**: Kokoro 82M, Piper/VITS, PocketTTS INT8, ZipVoice Distill,
+    OpenAI TTS, ElevenLabs Multilingual v2, Gemini 2.5 Flash TTS, Azure Neural TTS.
+  - **Music (10)**: TinyMusician Small (44M, MIT), TinyMusician 100M (MIT),
+    GeneralUser GS SoundFont (CC-BY-3.0), procedural synth, MusicGen Small
+    (CC-BY-NC-4.0 ⚠️ non-commercial), OpenAI Music, ElevenLabs Music, Suno API v1,
+    Stable Audio 2.0 (Stability), Lyria 2 (Google, non-commercial).
+  - **Sound (5)**: procedural synth, TinyMusician SFX, Magenta NSynth wavenet,
+    Freesound CC0 Pack, ElevenLabs Sound Effects, Stable Audio 2.0.
+- **Добавлены enum-поля в `Entry`**: `engineKind` (Local/Cloud) и
+  `download` (None/HuggingFace/CdnBundle/Cloud). Это формализует правило
+  AGENTS.md «модели не в APK, пользователь скачивает сам».
+- **7 новых скаффолдов `Generator`**:
+  - `TinyMusicianMusicGenerator` (id `litert.tinymusician-small.music`, MIT, 180 МБ)
+  - `TinyMusicianSfxGenerator` (id `litert.tinymusician.sound`, MIT, через SoundFont)
+  - `ElevenLabsMusicGenerator` (cloud, Lyria-2, до 4 минут)
+  - `OpenAiMusicGenerator` (cloud, preview, 4 минуты)
+  - `SunoMusicGenerator` (cloud, async POST→poll→download)
+  - `StableAudioCloudGenerator` (cloud, Stability AI, music и SFX в одном)
+  - `Lyria2MusicGenerator` (cloud, Google Lyria 2)
+  - `FreesoundSfxGenerator` (local, CC0, 150 МБ после скачивания)
+- **Удалён `MagentaRealtimeMusicGenerator`** — слишком тяжёлый (1.5 ГБ), нет
+  готового LiteRT-экспорта от Google для декодер-LLM. Документировано в
+  `docs/MODELS.md`.
+- **SettingsRepository** получил новые ключи: `GOOGLE_KEY`, `SUNO_KEY`,
+  `STABILITY_KEY`. В `SettingsScreen` добавлены поля для этих API-ключей.
+- **ModelsScreen** перерисован: в Music-табе теперь 8 локальных (procedural,
+  MusicGen, TinyMusician Small, TinyMusician 100M, SoundFont) + 5 облачных
+  (ElevenLabs, OpenAI, Suno, Lyria 2, Stable Audio). В Sound-табе 4 локальных
+  (procedural, TinyMusician SFX, NSynth, Freesound) + 2 облачных (ElevenLabs,
+  Stable Audio).
+- **TagDocs** добавлены для: PocketTTS, ZipVoice, TinyMusician (music и SFX),
+  NSynth, Suno, Stable Audio cloud, Lyria 2, Freesound, OpenAI Music,
+  ElevenLabs Music.
+
+### Changed
+
+- `GenerationModelCatalog.Entry` теперь требует явный `engineKind` и `download`.
+  Старые записи (без них) помечены как deprecated в комментариях.
+- `GeneratorRegistry` рефакторнут: разделены локальные и облачные генераторы,
+  ключи API прокидываются явно.
+
+### Documented
+
+- `docs/MODELS.md` полностью переписан: 23 записи с типом, источником, размером,
+  статусом, лицензией. Добавлены таблицы рекомендаций по выбору для voice /
+  music / sound.
+- `docs/AI_HANDOFF.md` (обновлено, секция «Каталог моделей 2026-07-28»)
+- `STATUS.md` (обновлено, текущая итерация и план)
