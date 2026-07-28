@@ -12,6 +12,7 @@ import com.t2v.tts.engines.GeminiTtsEngine
 import com.t2v.tts.engines.KokoroTtsEngine
 import com.t2v.tts.engines.OpenAiTtsEngine
 import com.t2v.tts.engines.PiperRussianTtsEngine
+import com.t2v.tts.engines.ZipVoiceTtsEngine
 import com.t2v.tts.engines.TtsEngine
 import java.io.File
 
@@ -48,6 +49,10 @@ class EngineRegistry(
         if (PiperRussianTtsEngine(russianRoot).isAvailable()) {
             add(PiperRussianTtsEngine.ENGINE_INFO)
         }
+        val zipvoiceRoot = File(appContext.filesDir, "models/zipvoice-distill-int8")
+        if (ZipVoiceTtsEngine(zipvoiceRoot).isAvailable()) {
+            add(ZipVoiceTtsEngine.ENGINE_INFO)
+        }
         add(OpenAiTtsEngine.ENGINE_INFO)
         add(ElevenLabsTtsEngine.ENGINE_INFO)
         add(GeminiTtsEngine.ENGINE_INFO)
@@ -78,6 +83,7 @@ class EngineRegistry(
                 KokoroTtsEngine(File(appContext.filesDir, "models/$KOKORO_DIRECTORY"))
             }
             "piper_ru" -> PiperRussianTtsEngine(File(appContext.filesDir, "models/piper-ru"))
+            "zipvoice_distill" -> ZipVoiceTtsEngine(File(appContext.filesDir, "models/zipvoice-distill-int8"))
             "openai" -> OpenAiTtsEngine(
                 apiKey = cfg["apiKey"]?.takeIf { it.isNotBlank() } ?: return null,
                 baseUrl = cfg["baseUrl"] ?: "https://api.openai.com/v1",
