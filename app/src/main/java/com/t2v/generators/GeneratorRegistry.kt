@@ -2,6 +2,7 @@ package com.t2v.generators
 
 import android.content.Context
 import com.t2v.generators.impl.ElevenLabsSoundEffectsGenerator
+import com.t2v.generators.impl.MusicGenMusicGenerator
 import com.t2v.generators.impl.NSynthSoundGenerator
 import com.t2v.generators.impl.StableAudioMusicGenerator
 import com.t2v.generators.impl.StableAudioSoundGenerator

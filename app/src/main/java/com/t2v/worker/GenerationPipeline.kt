@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -38,6 +39,21 @@ import java.io.File
  * Поддерживает отмену, прогресс, ретраи.
  */
 class GenerationPipeline(
+    private val context: Context,
+    private val engineRegistry: EngineRegistry,
+    private val textProcessor: TextProcessor,
+) {
+    companion object {
+        /**
+         * Maximum time a single TTS segment is allowed to run before we
+         * give up and surface a clear error to the user. Kokoro on long
+         * Russian text can hang in the ONNX runtime; without a timeout
+         * the audiobook stays in "running" forever and the user has no
+         * way to recover. Five minutes is a conservative upper bound for
+         * a 2500-character chunk on a mid-range phone.
+         */
+        private const val SEGMENT_TIMEOUT_MS: Long = 5 * 60_000L
+    }
     private val context: Context,
     private val engineRegistry: EngineRegistry,
     private val textProcessor: TextProcessor,
@@ -103,14 +119,6 @@ class GenerationPipeline(
                 )
             }
 
-            // Insert any <music>/<sfx> tags produced by the markup stage. Each
-            // tag splits the voice stream so we can place the clip exactly where
-            // the tag opened in the source text.
-            val insertedClips = audioTagInserter?.insert(audioTags, audiobookId) ?: 0
-            if (insertedClips > 0) {
-                _progress.update { it.copy(audioTagClips = insertedClips) }
-            }
-
             for ((idx, chunk) in chunks.withIndex()) {
                 if (cancelled) {
                     _progress.update { it.copy(phase = Progress.Phase.Cancelled) }
@@ -154,7 +162,13 @@ class GenerationPipeline(
                     outputFile = wav,
                     voice = expressiveVoice,
                 )
-                val result = withRetry(maxAttempts = 2) { engine.synthesize(req) }
+                val result = withRetry(maxAttempts = 2) {
+                    withTimeoutOrNull(SEGMENT_TIMEOUT_MS) { engine.synthesize(req) }
+                        ?: throw TtsEngineException.Generic(
+                            "TTS segment timed out after ${SEGMENT_TIMEOUT_MS / 1000}s. " +
+                            "Try a shorter text or switch to a cloud engine.",
+                        )
+                }
                 database.segments().update(
                     pendingSegment.copy(
                         audioPath = result.outputFile.absolutePath,
@@ -186,6 +200,17 @@ class GenerationPipeline(
                     segmentWavs += post
                 }
                 _progress.update { it.copy(done = idx + 1) }
+            }
+
+            // Insert any <music>/<sfx> tags AFTER the voice segments are
+            // generated so the AudioTagInserter can read each segment's
+            // actual pauseBeforeMs + durationMs to compute a correct
+            // timelineStartMs. Without this, the audio clips would land
+            // at timeline position 0 (the inserter saw durationMs=0 for
+            // all segments at insert time).
+            val insertedClips = audioTagInserter?.insert(audioTags, audiobookId) ?: 0
+            if (insertedClips > 0) {
+                _progress.update { it.copy(audioTagClips = insertedClips) }
             }
 
             // Кодируем
