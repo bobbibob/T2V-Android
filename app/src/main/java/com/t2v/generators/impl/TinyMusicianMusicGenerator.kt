@@ -4,6 +4,7 @@ import android.content.Context
 import com.t2v.core.audio.AudioEncoder
 import com.t2v.core.midi.MidiRenderer
 import com.t2v.core.midi.TinyMusicianMidiDecoder
+import com.t2v.core.midi.sf2.SoundFontRenderer
 import com.t2v.generators.Generator
 import com.t2v.generators.GeneratorCategory
 import com.t2v.generators.GeneratorRequest
@@ -16,9 +17,9 @@ import kotlinx.coroutines.withContext
 
 /**
  * TinyMusician (asigalov61) — компактный Music Transformer, генерирует
- * MIDI прямо на телефоне, а потом MIDI рендерится через SoundFont в WAV.
+ * MIDI прямо на телефоне, а потом MIDI рендерится в WAV.
  *
- * **Status: scaffold with procedural + MIDI fallback.**
+ * **Status: scaffold with procedural + SoundFont fallback.**
  *
  * Полный путь до реального inference:
  *  1. Скачать TinyMusician-44M (или 100M) ONNX int8 (~180/420 МБ) с HF
@@ -28,9 +29,11 @@ import kotlinx.coroutines.withContext
  *  5. Рендерить [MidiSequence] → WAV через [MidiRenderer] (sine) или
  *     [com.t2v.core.midi.sf2.SoundFontRenderer] (когда есть SoundFont)
  *
- * Сейчас (без ONNX) мы генерируем [MidiSequence] из [TinyMusicianMidiDecoder.fallbackFromPrompt]
- * (мood-keyword chord progression), затем рендерим через [MidiRenderer] (sine synthesis).
- * Когда появится ONNX — меняем только шаг генерации токенов, рендерер тот же.
+ * Сейчас (без ONNX) мы генерируем [MidiSequence] из
+ * [TinyMusicianMidiDecoder.fallbackFromPrompt] (mood-keyword chord
+ * progression), затем рендерим через:
+ *  - [SoundFontRenderer], если GeneralUser GS SoundFont скачан
+ *  - [MidiRenderer.renderSine], иначе
  *
  * Лицензия: MIT — коммерчески свободная.
  *
@@ -42,6 +45,7 @@ class TinyMusicianMusicGenerator(
     private val appContext: Context,
     private val runtime: LiteRtModelRuntime = LiteRtModelRuntime(appContext),
     private val installer: LiteRtModelInstaller = LiteRtModelInstaller(runtime),
+    private val soundFontInstaller: SoundFontInstaller = SoundFontInstaller(appContext),
 ) : Generator {
     override val id: String = "litert.tinymusician-small.music"
     override val displayName: String = "TinyMusician Small (44M, MIT)"
@@ -51,9 +55,6 @@ class TinyMusicianMusicGenerator(
 
     override suspend fun generate(request: GeneratorRequest): GeneratorResult =
         withContext(Dispatchers.IO) {
-            val durationSec = request.durationSeconds.coerceIn(1, 30).let {
-                if (it == 0) 10 else it
-            }
             val sampleRate = 22050
             // TODO real TinyMusician inference:
             //   1. tokenizer.encode(prompt) -> tokenIds
@@ -64,7 +65,13 @@ class TinyMusicianMusicGenerator(
                 prompt = request.prompt,
                 tempoBpm = 100,
             )
-            val pcm = MidiRenderer.renderSine(sequence, sampleRate = sampleRate)
+            // Try SoundFont first (much better quality), fall back to sine synth.
+            val soundFont = soundFontInstaller.loadInstalled("generaluser-gs-soundfont")
+            val pcm = if (soundFont != null) {
+                SoundFontRenderer(soundFont, sampleRate).render(sequence)
+            } else {
+                MidiRenderer.renderSine(sequence, sampleRate = sampleRate)
+            }
             request.outputFile.parentFile?.mkdirs()
             AudioEncoder.encodePcm16MonoWav(request.outputFile, pcm, sampleRate)
             GeneratorResult(

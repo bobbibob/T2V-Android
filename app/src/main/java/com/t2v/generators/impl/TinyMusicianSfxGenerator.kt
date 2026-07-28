@@ -29,6 +29,7 @@ class TinyMusicianSfxGenerator(
     private val appContext: Context,
     private val runtime: LiteRtModelRuntime = LiteRtModelRuntime(appContext),
     private val installer: LiteRtModelInstaller = LiteRtModelInstaller(runtime),
+    private val soundFontInstaller: SoundFontInstaller = SoundFontInstaller(appContext),
 ) : Generator {
     override val id: String = "litert.tinymusician.sound"
     override val displayName: String = "TinyMusician SFX (44M, MIT)"
@@ -43,7 +44,13 @@ class TinyMusicianSfxGenerator(
             }
             val sampleRate = 22050
             val sequence = buildDrumPhrase(request.prompt, durationSec)
-            val pcm = MidiRenderer.renderSine(sequence, sampleRate = sampleRate)
+            // Try SoundFont (drum samples are higher quality than DrumKit sine).
+            val soundFont = soundFontInstaller.loadInstalled("generaluser-gs-soundfont")
+            val pcm = if (soundFont != null) {
+                com.t2v.core.midi.sf2.SoundFontRenderer(soundFont, sampleRate).render(sequence)
+            } else {
+                MidiRenderer.renderSine(sequence, sampleRate = sampleRate)
+            }
             request.outputFile.parentFile?.mkdirs()
             AudioEncoder.encodePcm16MonoWav(request.outputFile, pcm, sampleRate)
             GeneratorResult(

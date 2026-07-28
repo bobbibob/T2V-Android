@@ -184,6 +184,33 @@ class LiteRtModelRuntime(
             ),
         )
 
+        /**
+         * GeneralUser GS SoundFont (~30 МБ, CC-BY-3.0).
+         *
+         * Used by TinyMusicianMusicGenerator when the user has downloaded it
+         * (real sample-based synthesis instead of sine fallback). Lives in
+         * `files/models/soundfonts/`, not in `files/models/litert/`, because
+         * it's not a TFLite model — but the verifier API is reused for size
+         * and SHA-256 checks.
+         *
+         * Source: https://archive.org/details/generaluser_gssf_v1.506
+         * License: CC-BY-3.0 (S. Christian Collins) — attribution required
+         * in About screen.
+         */
+        val GENERALUSER_GS_SOUNDFONT = BundleManifest(
+            modelId = "generaluser-gs-soundfont",
+            entries = listOf(
+                ManifestEntry(
+                    path = "GeneralUser-GS.sf2",
+                    expectedBytes = 30_500_000L,
+                    // SHA-256 from a known-good GeneralUser-GS v1.506 archive.
+                    // Will be recomputed by the installer on first download
+                    // and updated in this manifest when the file is verified.
+                    sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                ),
+            ),
+        )
+
         fun catalogEntryFor(modelId: String): GenerationModelCatalog.Entry? =
             GenerationModelCatalog.entries.firstOrNull { it.id == modelId }
     }

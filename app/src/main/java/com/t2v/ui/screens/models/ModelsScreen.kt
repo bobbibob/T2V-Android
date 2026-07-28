@@ -1018,7 +1018,15 @@ class ModelsViewModel(private val context: android.content.Context) : ViewModel(
                         sunoKeyConfigured = value.engines["suno"]?.get("apiKey").orEmpty().isNotBlank(),
                         googleKeyConfigured = value.engines["google"]?.get("apiKey").orEmpty().isNotBlank(),
                         stabilityKeyConfigured = value.engines["stability"]?.get("apiKey").orEmpty().isNotBlank(),
-                        soundFontReady = false,
+                        soundFontReady = com.t2v.generators.runtime.LiteRtModelRuntime(
+                            context
+                        ).let { runtime ->
+                            try {
+                                runtime.isInstalled(
+                                    com.t2v.generators.runtime.LiteRtModelRuntime.GENERALUSER_GS_SOUNDFONT
+                                )
+                            } catch (e: Exception) { false }
+                        },
                         nSynthReady = false,
                         freesoundReady = false,
                         modelsTreeUri = value.modelsTreeUri,

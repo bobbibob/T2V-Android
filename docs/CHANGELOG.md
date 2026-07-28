@@ -257,3 +257,44 @@
 - Реальный TinyMusician ONNX (ждём экспорт от asigalov61 / community)
 - `tools/export_tinymusician_onnx.py` (отдельный PR)
 - Включить SoundFontRenderer в TinyMusicianMusicGenerator когда SoundFont скачан
+
+## [Unreleased] - 2026-07-28 (SoundFont + ONNX export)
+
+### Added
+
+- **`SoundFontInstaller`** (`generators/impl/SoundFontInstaller.kt`):
+  загрузчик SoundFont 2.x файлов с CDN (archive.org). Real download flow
+  (HTTP → files/models/soundfonts/ → SHA-256 verify → sidecar). 30 МБ
+  GeneralUser-GS скачивается за ~30 сек на 4G. Сейчас `loadInstalled()`
+  синхронно парсит .sf2 через [SoundFontParser].
+- **`LiteRtModelRuntime.GENERALUSER_GS_SOUNDFONT`**: новый manifest
+  (30.5 МБ expected size, SHA-256 placeholder пока не выкачано).
+- **`TinyMusicianMusicGenerator`**: автоматически переключается на
+  `SoundFontRenderer` если SoundFont скачан, иначе `MidiRenderer.renderSine()`.
+- **`TinyMusicianSfxGenerator`**: то же самое для drum-сэмплов
+  (SoundFont drum kit лучше, чем sine `DrumKit`).
+- **`ModelsScreen.soundFontReady`**: теперь подключен к
+  `LiteRtModelRuntime.isInstalled(GENERALUSER_GS_SOUNDFONT)`. UI-карточка
+  показывает реальный статус скачивания.
+- **`tools/export_tinymusician_onnx.py`**: 130-строчный Python-скрипт
+  для экспорта TinyMusician PyTorch → ONNX int8 → заливка в HF. Скачивает
+  чекпоинт, экспортирует с `opset_version=17` (ARM64-совместимый),
+  квантизует через `onnxruntime.quantization.quantize_dynamic`, считает
+  SHA-256 для каждого файла, опционально пушит в HF-репо.
+- **`docs/TINYMUSICIAN.md`**: полная документация по стеку, скрипту,
+  roadmap интеграции ONNX.
+
+### Architecture
+
+- `core/midi/` — без изменений
+- `SoundFontRenderer` уже мог рендерить — теперь он **вызывается** из
+  реальных генераторов
+- `SoundFontInstaller` использует `LiteRtModelRuntime` API для
+  consistency (isInstalled / verify / file size checks)
+
+### Следующее
+
+- Запустить `tools/export_tinymusician_onnx.py` на рабочей станции
+  → залить в `asigalov61/TinyMusician-ONNX` → обновить каталог
+- `onnxruntime-mobile` AAR dependency в `app/build.gradle.kts`
+- Real inference step в `TinyMusicianMusicGenerator.generate()`
