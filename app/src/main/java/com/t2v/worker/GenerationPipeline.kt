@@ -43,10 +43,6 @@ class GenerationPipeline(
     private val engineRegistry: EngineRegistry,
     private val textProcessor: TextProcessor,
 ) {
-    private val context: Context,
-    private val engineRegistry: EngineRegistry,
-    private val textProcessor: TextProcessor,
-) {
 
     companion object {
         /**
