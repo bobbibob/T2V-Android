@@ -202,33 +202,43 @@ class MusicGenOnnxGenerator(
         inputIds: LongArray,
         attentionMask: LongArray,
     ): Array<Array<FloatArray>> {
+        val env = OrtSessionProvider.environment()
         val inputIdsTensor = OnnxTensor.createTensor(
-            OrtSessionProvider.environment(),
-            LongBuffer.wrap(inputIds),
+            env, java.nio.LongBuffer.wrap(inputIds),
             longArrayOf(1, inputIds.size.toLong())
         )
         val maskTensor = OnnxTensor.createTensor(
-            OrtSessionProvider.environment(),
-            LongBuffer.wrap(attentionMask),
+            env, java.nio.LongBuffer.wrap(attentionMask),
             longArrayOf(1, attentionMask.size.toLong())
         )
-        val outputs = session.run(
+        val result = session.run(
             mapOf("input_ids" to inputIdsTensor, "attention_mask" to maskTensor)
         )
-        val hidden = outputs[0].value as Array<Array<FloatArray>>
-        inputIdsTensor.close()
-        maskTensor.close()
-        outputs.forEach { it.close() }
-        return hidden
+        return try {
+            val hidden = result[0].value as Array<Array<FloatArray>>
+            // Make a defensive copy so we can close the result without losing the data
+            Array(hidden.size) { i -> hidden[i].copyOf() }
+        } finally {
+            result.close()
+        }
     }
 
     /**
      * One step of the decoder with past KV. Returns (next_codes_per_codebook, present_kv).
+     *
+     * The decoder has 49 outputs: logits, then present.0.decoder.key,
+     * present.0.decoder.value, present.0.encoder.key, present.0.encoder.value,
+     * present.1.decoder.key, ... and so on for 24 layers.
+     * Index layout: output[i*2 + 1] = present.{i}.decoder.key
+     *               output[i*2 + 2] = present.{i}.decoder.value
+     *               output[i*2 + 3] = present.{i}.encoder.key
+     *               output[i*2 + 4] = present.{i}.encoder.value
+     * (output[0] is logits)
      */
     private fun runDecoderStep(
         session: ai.onnxruntime.OrtSession,
-        inputIds: Array<LongArray>,  // [(numCodebooks, 1)]
-        encoderHidden: Array<Array<FloatArray>>,  // (1, encoderSeq, 768)
+        inputIds: Array<LongArray>,
+        encoderHidden: Array<Array<FloatArray>>,
         pastKv: Map<String, Array<Array<Array<FloatArray>>>>,
         numLayers: Int,
         numHeads: Int,
@@ -236,24 +246,20 @@ class MusicGenOnnxGenerator(
     ): Pair<LongArray, Map<String, Array<Array<Array<FloatArray>>>>> {
         val numCodebooks = inputIds.size
         val encoderSeq = encoderHidden[0].size
-        val batchSize = 1
+        val env = OrtSessionProvider.environment()
 
-        // input_ids: (numCodebooks, 1) flattened
-        val flatInput = LongArray(numCodebooks) { inputIds[it][0] }
+        val inputIdsFlat = LongArray(numCodebooks) { inputIds[it][0] }
         val inputIdsTensor = OnnxTensor.createTensor(
-            OrtSessionProvider.environment(),
-            LongBuffer.wrap(flatInput),
+            env, java.nio.LongBuffer.wrap(inputIdsFlat),
             longArrayOf(numCodebooks.toLong(), 1L)
         )
         val encoderAttn = LongArray(encoderSeq) { 1L }
         val encoderAttnTensor = OnnxTensor.createTensor(
-            OrtSessionProvider.environment(),
-            LongBuffer.wrap(encoderAttn),
+            env, java.nio.LongBuffer.wrap(encoderAttn),
             longArrayOf(1L, encoderSeq.toLong())
         )
         val encoderHiddenTensor = OnnxTensor.createTensor(
-            OrtSessionProvider.environment(),
-            encoderHidden,
+            env, encoderHidden,
             longArrayOf(1L, encoderSeq.toLong(), 768L)
         )
 
@@ -262,56 +268,65 @@ class MusicGenOnnxGenerator(
             "encoder_attention_mask" to encoderAttnTensor,
             "encoder_hidden_states" to encoderHiddenTensor,
         )
-        // Add past_kv
-        for ((name, tensor) in pastKv.mapValues { (_, v) ->
-            OnnxTensor.createTensor(
-                OrtSessionProvider.environment(),
-                v[0][0][0],  // first element
-                v[0].size.toLong().let { longArrayOf(1L, numHeads.toLong(), it, headDim.toLong()) }
-            )
-        }) {
-            feed[name] = tensor
-        }
-
-        val outputs = session.run(feed)
-        val logits = outputs[0].value as Array<Array<FloatArray>>
-        // argmax per codebook
-        val nextCodes = LongArray(numCodebooks) { cb ->
-            var maxIdx = 0
-            var maxVal = logits[cb][0][0]
-            for (i in 1 until 2048) {
-                if (logits[cb][0][i] > maxVal) {
-                    maxVal = logits[cb][0][i]
-                    maxIdx = i
-                }
-            }
-            maxIdx.toLong()
-        }
-
-        // Extract present_kv
-        val presentKv = mutableMapOf<String, Array<Array<Array<FloatArray>>>>()
+        // Add past_kv: present_{i}.decoder/encoder.{key,value} -> shape (1, heads, past_len, head_dim)
         for (i in 0 until numLayers) {
             for (kind in arrayOf("key", "value")) {
-                val name = "present.$i.decoder.$kind"
-                val idx = outputs.indexOfFirst { it.name == name }
-                if (idx >= 0) {
-                    presentKv["past_key_values.$i.decoder.$kind"] =
-                        outputs[idx].value as Array<Array<Array<FloatArray>>>
-                }
-                val name2 = "present.$i.encoder.$kind"
-                val idx2 = outputs.indexOfFirst { it.name == name2 }
-                if (idx2 >= 0) {
-                    presentKv["past_key_values.$i.encoder.$kind"] =
-                        outputs[idx2].value as Array<Array<Array<FloatArray>>>
-                }
+                val past = pastKv["past_key_values.$i.decoder.$kind"]
+                    ?: pastKv["past_key_values.$i.encoder.$kind"]!!
+                val name = "past_key_values.$i.decoder.$kind"
+                val t = OnnxTensor.createTensor(
+                    env, past[0],
+                    longArrayOf(1L, numHeads.toLong(),
+                        (past[0][0].size).toLong(), headDim.toLong())
+                )
+                feed[name] = t
+                val pastEnc = pastKv["past_key_values.$i.encoder.$kind"]!!
+                val nameEnc = "past_key_values.$i.encoder.$kind"
+                val tEnc = OnnxTensor.createTensor(
+                    env, pastEnc[0],
+                    longArrayOf(1L, numHeads.toLong(),
+                        (pastEnc[0][0].size).toLong(), headDim.toLong())
+                )
+                feed[nameEnc] = tEnc
             }
         }
 
-        // Close all inputs and outputs
-        feed.values.forEach { it.close() }
-        outputs.forEach { it.close() }
+        val result = session.run(feed)
+        try {
+            val logits = result[0].value as Array<Array<FloatArray>>
+            val nextCodes = LongArray(numCodebooks) { cb ->
+                val row = logits[cb][0]
+                var maxIdx = 0
+                var maxVal = row[0]
+                for (i in 1 until row.size) {
+                    if (row[i] > maxVal) {
+                        maxVal = row[i]
+                        maxIdx = i
+                    }
+                }
+                maxIdx.toLong()
+            }
 
-        return Pair(nextCodes, presentKv)
+            // Extract present_kv by index (output[0] is logits).
+            // The output names follow the pattern: logits, present.0.decoder.key, present.0.decoder.value,
+            // present.0.encoder.key, present.0.encoder.value, present.1.decoder.key, ...
+            // So index = 1 + i*4 + 0..3
+            val presentKv = mutableMapOf<String, Array<Array<Array<FloatArray>>>>()
+            for (i in 0 until numLayers) {
+                val baseIdx = 1 + i * 4
+                presentKv["past_key_values.$i.decoder.key"] =
+                    result[baseIdx + 0].value as Array<Array<Array<FloatArray>>>
+                presentKv["past_key_values.$i.decoder.value"] =
+                    result[baseIdx + 1].value as Array<Array<Array<FloatArray>>>
+                presentKv["past_key_values.$i.encoder.key"] =
+                    result[baseIdx + 2].value as Array<Array<Array<FloatArray>>>
+                presentKv["past_key_values.$i.encoder.value"] =
+                    result[baseIdx + 3].value as Array<Array<Array<FloatArray>>>
+            }
+            return Pair(nextCodes, presentKv)
+        } finally {
+            result.close()  // closes all output tensors
+        }
     }
 
     private fun createEmptyPastKv(
@@ -346,27 +361,28 @@ class MusicGenOnnxGenerator(
         numSteps: Int,
         sampleRate: Int,
     ): ShortArray {
-        // Reshape to (1, 1, numCodebooks, numSteps)
-        val codes = LongArray(1 * 1 * audioCodes[0][0].size * numSteps) { i ->
+        val numCodebooks = audioCodes[0][0].size
+        val codes = LongArray(1 * 1 * numCodebooks * numSteps) { i ->
             val c = i / numSteps
             val t = i % numSteps
             audioCodes[0][0][c][t]
         }
+        val env = OrtSessionProvider.environment()
         val codesTensor = OnnxTensor.createTensor(
-            OrtSessionProvider.environment(),
-            LongBuffer.wrap(codes),
-            longArrayOf(1L, 1L, audioCodes[0][0].size.toLong(), numSteps.toLong())
+            env, java.nio.LongBuffer.wrap(codes),
+            longArrayOf(1L, 1L, numCodebooks.toLong(), numSteps.toLong())
         )
-        val outputs = session.run(mapOf("audio_codes" to codesTensor))
-        val audio = outputs[0].value as Array<Array<FloatArray>>
-        codesTensor.close()
-        outputs.forEach { it.close() }
-
-        val flat = audio[0][0]
-        val pcm = ShortArray(flat.size)
-        for (i in flat.indices) {
-            pcm[i] = (flat[i] * 32767f).toInt().coerceIn(-32768, 32767).toShort()
+        val result = session.run(mapOf("audio_codes" to codesTensor))
+        return try {
+            val audio = result[0].value as Array<Array<FloatArray>>
+            val flat = audio[0][0]
+            val pcm = ShortArray(flat.size)
+            for (i in flat.indices) {
+                pcm[i] = (flat[i] * 32767f).toInt().coerceIn(-32768, 32767).toShort()
+            }
+            pcm
+        } finally {
+            result.close()
         }
-        return pcm
     }
 }

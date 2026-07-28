@@ -128,27 +128,27 @@ object OrtSessionProvider {
 }
 
 /**
- * Convenience function to convert a [Map<String, Any>] feed into
- * a properly-closed list of inputs, and dispose of intermediate tensors.
+ * Run a [session] with the given input [feed] (Map<String, OnnxTensor>) and
+ * pass the auto-closed OrtSession.Result to [block]. The result, plus all
+ * output tensors, is automatically closed when [block] returns.
+ *
+ * Usage:
+ * ```
+ * val result = withOrtSession(session, mapOf("input_ids" to idsTensor)) { result ->
+ *     val hidden = result[0].value as Array<Array<FloatArray>>
+ *     hidden
+ * }
+ * ```
  */
 inline fun <T> withOrtSession(
-    session: OrtSession,
-    feed: Map<String, Any>,
-    block: (List<OnnxTensor?>) -> T,
+    session: ai.onnxruntime.OrtSession,
+    feed: Map<String, OnnxTensor>,
+    block: (ai.onnxruntime.OrtSession.Result) -> T,
 ): T {
-    val inputs = feed.map { (name, value) ->
-        when (value) {
-            is OnnxTensor -> name to value
-            else -> throw IllegalArgumentException(
-                "Unsupported input type for '$name': ${value?.javaClass?.simpleName}. " +
-                    "Use OnnxTensor for all inputs."
-            )
-        }
-    }.toMap()
-    val outputs = session.run(inputs)
+    val result = session.run(feed)
     return try {
-        block(outputs)
+        block(result)
     } finally {
-        outputs.forEach { it.close() }
+        result.close()
     }
 }
