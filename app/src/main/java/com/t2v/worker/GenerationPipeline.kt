@@ -43,6 +43,11 @@ class GenerationPipeline(
     private val engineRegistry: EngineRegistry,
     private val textProcessor: TextProcessor,
 ) {
+    private val context: Context,
+    private val engineRegistry: EngineRegistry,
+    private val textProcessor: TextProcessor,
+) {
+
     companion object {
         /**
          * Maximum time a single TTS segment is allowed to run before we
@@ -54,10 +59,6 @@ class GenerationPipeline(
          */
         private const val SEGMENT_TIMEOUT_MS: Long = 5 * 60_000L
     }
-    private val context: Context,
-    private val engineRegistry: EngineRegistry,
-    private val textProcessor: TextProcessor,
-) {
 
     data class Progress(
         val total: Int = 0,
