@@ -95,6 +95,17 @@
 - **Piper/VITS** на 15 языках (Русский, English, German, French, Spanish,
   Italian, Chinese, Japanese, Hindi, Bengali, Arabic, Korean).
   Скачиваются через `RussianVoiceInstaller.install()`.
+- **Piper/VITS с Hugging Face** (uk-UA, ca-ES, cs-CZ, da-DK, el-GR, fa-IR,
+  fi-FI, hu-HU, nl-NL, pt-BR, ro-RO, tr-TR) — реальные записи каталога
+  `vits-piper-*`, качаются по кнопке через `HuggingFaceRepository.install()`
+  (`downloadAllFiles=true`), после установки автоматически становятся
+  `SherpaOnnxLocalEngine`. Нужен **устройственный тест**: скачать
+  один голос, выбрать его, сгенерировать WAV.
+  → **Устройственный тест (S20, arm64)**: ✅ загрузка UK-UA (38.6 MB),
+  файлы + манифест в `files/models/<sha256(repo)>`, движок распознан
+  («Голоса» → `vits-piper-uk-ua` → Lada · Selected), настройки
+  `tts_engine/voice_id/language` записаны. WAV-синтез с главного экрана
+  не запустился (генерация требует проект/папку — вне scope голосов).
 - **NSynth wavenet** (Magenta, SFX) — `RuntimeInDevelopment`, refuses to run
   пока `LiteRtModelInstaller.markSmokeTested()` не вызван после ARM64 smoke-test.
 - **Stable Audio Open Small** (music) и **Stable Audio Clip** (sound) —
