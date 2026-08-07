@@ -27,7 +27,7 @@ T2V поддерживает **только два типа моделей** (п
 | `stable-audio-clip` | Sound (procedural) | LiteRT (DSP) | 0 | Процедурный, не AI; уже работает |
 | `openai-music` | Music (cloud) | — | — | Только UI, не подключён |
 | `elevenlabs-sound-clip` | Sound (cloud, SFX API) | — | — | Нужен API-ключ |
-| `musicgen-small` | Music (AI, LiteRT) | LiteRT | ~422 МБ | Зарегистрирован; нужен ARM64 smoke-test (каркас `MusicGenOnnxGenerator`) |
+| `musicgen-small` | Music (AI, LiteRT) | LiteRT | ~422 МБ | Каркас + скачивание через каталог; нужен ARM64 smoke-test + реальный инференс |
 
 ### Removed (deprecated)
 

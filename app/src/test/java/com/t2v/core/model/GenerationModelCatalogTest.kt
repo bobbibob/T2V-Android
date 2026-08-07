@@ -105,6 +105,24 @@ class GenerationModelCatalogTest {
     }
 
     @Test
+    fun `localVoiceModelEntries only returns local HF-backed voice models`() {
+        val voice = GenerationModelCatalog.localVoiceModelEntries()
+        // Kokoro is a real HF repo; piper/openai-music/eleven-sfx and the LiteRT
+        // generators are intentionally excluded.
+        assertTrue(
+            voice.map { it.id }.contains("kokoro-82m"),
+        )
+        assertTrue(
+            "No voice entry may be a bundle with no download",
+            voice.all { GenerationModelCatalog.isHuggingFaceRepository(it.id) },
+        )
+        assertTrue(
+            "Procedural music is not a local voice entry",
+            voice.none { it.id == "stable-audio-open-small" },
+        )
+    }
+
+    @Test
     fun `stable audio shares LiteRT runtime and is verified for install`() {
         val music = GenerationModelCatalog.forCategory(
             GenerationModelCatalog.Category.Music,

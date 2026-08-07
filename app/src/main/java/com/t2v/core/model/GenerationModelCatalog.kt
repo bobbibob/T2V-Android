@@ -554,6 +554,29 @@ object GenerationModelCatalog {
     fun repositoryFor(modelId: String): String? =
         entries.firstOrNull { it.id == modelId }?.repository?.takeIf { it.isNotBlank() }
 
+    /**
+     * A repository is usable by [com.t2v.server.HuggingFaceRepository] only when
+     * it is a real Hugging Face id in the form `author/name`. Release stubs
+     * like `k2-fsa/sherpa-onnx releases` and http(s) URLs are excluded.
+     */
+    fun isHuggingFaceRepository(modelId: String): Boolean =
+        repositoryFor(modelId)?.let { repo ->
+            repo.contains('/') &&
+                !repo.startsWith("http", ignoreCase = true) &&
+                repo.none { it.isWhitespace() }
+        } ?: false
+
+    /**
+     * Local voice entries (SherpaOnnx runtime) that can be discovered as
+     * engines once their model directory is installed. Returns entries in a
+     * stable catalog order; callers filter by their own availability probe.
+     */
+    fun localVoiceModelEntries(): List<Entry> = entries.filter { entry ->
+        Category.Voice in entry.categories &&
+            entry.requirements.runtime == Runtime.SherpaOnnx &&
+            isHuggingFaceRepository(entry.id)
+    }
+
     fun licenseFor(modelId: String): String? =
         entries.firstOrNull { it.id == modelId }?.license?.takeIf { it.isNotBlank() }
 }

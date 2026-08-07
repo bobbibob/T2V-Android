@@ -160,6 +160,31 @@ fun ModelsScreen(
                         )
                     },
                 )
+                DownloadableModelCard(
+                    catalogId = "musicgen-small",
+                    title = "MusicGen-small (он-девайс музыка)",
+                    status = "AI-генерация музыки • LiteRT • ~422 МБ • нужен ARM64 + 3 ГБ RAM",
+                    tags = GenerationModelCatalog.tagDocsFor("musicgen-small"),
+                    selected = state.selectedMusicModelId == "musicgen-small",
+                    enabled = true,
+                    state = state,
+                    vm = vm,
+                    infoRepository = GenerationModelCatalog.repositoryFor("musicgen-small"),
+                    infoLicense = GenerationModelCatalog.licenseFor("musicgen-small"),
+                    infoRuntime = "LiteRT",
+                    infoCategoryLabel = infoCategoryLocalLabel,
+                    onInfo = {
+                        infoTarget = InfoTarget(
+                            title = "MusicGen-small (он-девайс музыка)",
+                            tagline = GenerationModelCatalog.tagDocsFor("musicgen-small")?.tagline,
+                            tags = GenerationModelCatalog.tagDocsFor("musicgen-small"),
+                            runtime = "LiteRT",
+                            repository = GenerationModelCatalog.repositoryFor("musicgen-small"),
+                            license = GenerationModelCatalog.licenseFor("musicgen-small"),
+                            categoryLabel = infoCategoryLocalLabel,
+                        )
+                    },
+                )
                 ModelDetailCard(
                     title = "ElevenLabs Sound Effects (облако)",
                     status = "Нужен API-ключ ElevenLabs • длительность 1-22 секунды",
@@ -1047,31 +1072,94 @@ class ModelsViewModel(private val context: android.content.Context) : ViewModel(
     /**
      * Download a model declared in [com.t2v.core.model.GenerationModelCatalog].
      *
-     * For now this is a thin wrapper around [downloadKokoro] for the verified
-     * Kokoro entry and a no-op (with an error message) for every other entry,
-     * because the only catalog entry whose repository is a Hugging Face
-     * identifier in the form `author/name` and whose size we know is
-     * Kokoro-82M. Future TFLite-ready music/sound models will plug in here
-     * once they have a real inference adapter; the UI flow (Download button,
-     * progress bar, cancel) is already in place via
-     * [com.t2v.ui.screens.models.DownloadableModelCard].
+     * Kokoro keeps its bespoke flow (voice.bin/tokens.txt aware). Every other
+     * catalog entry whose repository is a real Hugging Face id (`author/name`)
+     * is downloaded through the generic [downloadCatalogModel]/[HuggingFaceRepository]
+     * path — the same client Kokoro uses. LiteRT music/sound bundles (e.g.
+     * MusicGen) download all their files because [HuggingFaceRepository.install]
+     * treats LiteRT entries as whole-bundle installs.
      */
     fun downloadModelFromCatalog(catalogId: String) {
         val entry = com.t2v.core.model.GenerationModelCatalog
             .entries
             .firstOrNull { it.id == catalogId }
             ?: return
-        // Single special case: Kokoro has its own bespoke flow that knows
-        // about the model's voice.bin and tokens.txt files. Every other
-        // catalog entry currently points to either a procedural backend (no
-        // download) or a non-HF repository (also no download).
-        when (catalogId) {
-            "kokoro-82m" -> downloadKokoro()
+        when {
+            catalogId == "kokoro-82m" -> {
+                // Kokoro has a bespoke flow that knows the model's voice.bin
+                // and tokens.txt files.
+                downloadKokoro()
+            }
+            com.t2v.core.model.GenerationModelCatalog.isHuggingFaceRepository(catalogId) -> {
+                downloadCatalogModel(entry)
+            }
             else -> _state.update {
                 it.copy(
                     error = "Загрузка для «${entry.title}» пока не подключена. " +
-                        "Доступно только для Kokoro.",
+                        "У этой записи нет Hugging Face-репозитория для скачивания.",
                 )
+            }
+        }
+    }
+
+    /**
+     * Generic Hugging Face download for a catalog [entry] backed by a real
+     * `author/name` repository. Reuses the same progress/cancel UI that
+     * Kokoro uses, but reports through the per-catalog fields so several
+     * cards can be shown at once.
+     */
+    private fun downloadCatalogModel(entry: com.t2v.core.model.GenerationModelCatalog.Entry) {
+        if (downloadJob?.isActive == true) return
+        val repo = com.t2v.core.model.GenerationModelCatalog.repositoryFor(entry.id)
+            ?: return
+        downloadJob = viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    downloadingCatalogId = entry.id,
+                    catalogDownloadProgress = 0f,
+                    catalogDownloadedBytes = 0L,
+                    catalogDownloadTotalBytes = entry.approximateDownloadBytes ?: -1L,
+                    error = null,
+                )
+            }
+            runCatching {
+                val model = repository().model(repo)
+                val variant = model.variants.firstOrNull()
+                    ?: return@runCatching error("у модели «${entry.title}» нет файлов, подходящих для Android")
+                repository().install(model, variant) { downloaded, total ->
+                    val progress = if (total > 0) {
+                        (downloaded.toDouble() / total.toDouble()).toFloat().coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                    _state.update {
+                        it.copy(
+                            catalogDownloadProgress = progress,
+                            catalogDownloadedBytes = downloaded.coerceAtLeast(0L),
+                            catalogDownloadTotalBytes = total,
+                        )
+                    }
+                }
+            }.onSuccess {
+                _state.update {
+                    it.copy(
+                        installed = repository().installed(),
+                        downloadingCatalogId = null,
+                        catalogDownloadProgress = 0f,
+                        catalogDownloadedBytes = 0L,
+                        catalogDownloadTotalBytes = -1L,
+                    )
+                }
+            }.onFailure { error ->
+                _state.update {
+                    it.copy(
+                        downloadingCatalogId = null,
+                        catalogDownloadProgress = 0f,
+                        catalogDownloadedBytes = 0L,
+                        catalogDownloadTotalBytes = -1L,
+                        error = error.message,
+                    )
+                }
             }
         }
     }

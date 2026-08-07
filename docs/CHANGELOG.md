@@ -13,6 +13,20 @@
   до ARM64 smoke-test на устройстве — ничего фейкового не генерирует.
 - `LiteRtModelInstaller.isSmokeTestedInstalled(manifest)` — обобщённый
   смоук-гейт для любого LiteRT-бандла (раньше был только для NSynth).
+- **Универсальное скачивание моделей из каталога**: `ModelsViewModel
+  .downloadModelFromCatalog()` теперь обрабатывает любую запись каталога с
+  реальным Hugging Face-репозиторием (`author/name`), а не только Kokoro.
+  LiteRT-бандлы (например `musicgen-small`) качаются целиком
+  (`HuggingFaceRepository.install`), раз поддерживается расширение `.tflite`.
+  В Models → Music добавлена `DownloadableModelCard` для `musicgen-small`
+  (ранее карточка существовала, но не использовалась нигде).
+- **Динамические локальные TTS-модели**: новый `SherpaOnnxLocalEngine` +
+  каталожное обнаружение в `EngineRegistry`. Любая голосовая запись в
+  `GenerationModelCatalog` с реальным HF-репозиторием, чьи файлы установлены,
+  автоматически становится движком — без нового кода-адаптера.
+- `GenerationModelCatalog.isHuggingFaceRepository(modelId)` /
+  `localVoiceModelEntries()` — хелперы, отделяющие настоящие HF-репозитории
+  от release-заглушек.
 
 ### Fixed
 - **Kokoro зависание на длинных текстах** (>3 000 символов): `KokoroTtsEngine`

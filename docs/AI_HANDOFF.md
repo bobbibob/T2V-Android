@@ -134,7 +134,8 @@
 | # | Задача | Статус | Комментарий |
 |---|---|---|---|
 | 3 | Вернуть скачивание моделей в UI | ✅ Сделано | `DownloadableModelCard`, `downloadModelFromCatalog()` |
-| 1 | MusicGen через ONNX | 🚧 Каркас готов | `MusicGenOnnxGenerator` зарегистрирован (каталог `musicgen-small`, TagDocs, манифест LiteRT). Остался ARM64 smoke-test + скачивание через `HuggingFaceRepository` |
+| 1 | MusicGen через ONNX | 🚧 Каркас готов | Зарегистрирован + скачивание: `downloadModelFromCatalog()` теперь скачивает любую запись каталога с реальным HF-репозиторием (LiteRT-бандлы целиком). UI-карточка `musicgen-small` есть. Остался ARM64 smoke-test + реальный инференс |
+| — | Динамические локальные TTS-модели | ✅ Каркас | `SherpaOnnxLocalEngine` + `EngineRegistry` каталожно обнаруживает установленные sherpa-onnx модели (без нового адаптера-кода) |
 | — | Фикс Kokoro зависания | ✅ Сделано | `splitLongText()` режет текст ≤1200 символов на предложения; синтез кусками |
 | — | Фикс `AudioTagInserter.positionFor` (timelineStartMs=0) | ✅ Сделано | `insert()` перенесён после цикла voice-сегментов |
 | — | Авто-открытие AudioEditor после генерации с тегами | ✅ Сделано | UI в `GenerationScreen` (LaunchedEffect на `audioTagClips`) |

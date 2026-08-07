@@ -154,7 +154,15 @@ class HuggingFaceRepository(
             "Model ${model.id} is not verified for execution on Android"
         }
         require(variant in model.variants) { "Variant does not belong to ${model.id}" }
-        val files = if (model.id == KOKORO_REPOSITORY) {
+        // LiteRT bundles (e.g. MusicGen) need every model file, exactly like the
+        // Kokoro branch, because the three-stage encoder/LM/decoder pipeline has
+        // no single "weight" to pick. Everything else downloads one weight file
+        // plus its support files.
+        val isLiteRtBundle = GenerationModelCatalog.entries.any {
+            it.repository == model.id &&
+                it.requirements.runtime == GenerationModelCatalog.Runtime.LiteRt
+        }
+        val files = if (model.id == KOKORO_REPOSITORY || isLiteRtBundle) {
             model.files.filter {
                 it.path != ".gitattributes" &&
                     !it.path.equals("README.md", ignoreCase = true)
@@ -364,7 +372,10 @@ class HuggingFaceRepository(
     }
 
     private fun directoryFor(modelId: String): File =
-        File(modelsRoot, sha256(modelId).take(24))
+        File(modelsRoot, directoryNameFor(modelId))
+
+    /** Stable filesystem-safe directory name for a repository id (first 24 hex of SHA-256). */
+    private fun directoryNameFor(modelId: String): String = sha256(modelId).take(24)
 
     private fun safeTarget(root: File, relativePath: String): File {
         val target = File(root, relativePath).canonicalFile
@@ -414,9 +425,9 @@ class HuggingFaceRepository(
         }
         private val SUPPORTED_EXTENSIONS = setOf(
             "onnx", "bin", "json", "txt", "model", "safetensors", "pt", "pth",
-            "yaml", "yml", "tokens", "vocab", "config", "gguf",
+            "yaml", "yml", "tokens", "vocab", "config", "gguf", "tflite",
         )
-        private val WEIGHT_EXTENSIONS = setOf("onnx", "safetensors", "pt", "pth", "gguf")
+        private val WEIGHT_EXTENSIONS = setOf("onnx", "safetensors", "pt", "pth", "gguf", "tflite")
         private val SUPPORT_FILE_EXTENSIONS = SUPPORTED_EXTENSIONS - WEIGHT_EXTENSIONS
         private val QUANTIZATION = Regex(
             """(?:^|[._-])(F32|F16|BF16|Q[2-8](?:_[0-9])?(?:_[KMLS]+)?|IQ[1-4](?:_[A-Z]+)?)(?:[._-]|$)""",

@@ -1,6 +1,7 @@
 package com.t2v.tts.registry
 
 import android.content.Context
+import com.t2v.core.model.GenerationModelCatalog
 import com.t2v.tts.EngineInfo
 import com.t2v.tts.TtsEngineException
 import com.t2v.tts.VoiceConfig
@@ -12,8 +13,10 @@ import com.t2v.tts.engines.GeminiTtsEngine
 import com.t2v.tts.engines.KokoroTtsEngine
 import com.t2v.tts.engines.OpenAiTtsEngine
 import com.t2v.tts.engines.PiperRussianTtsEngine
+import com.t2v.tts.engines.SherpaOnnxLocalEngine
 import com.t2v.tts.engines.TtsEngine
 import java.io.File
+import java.security.MessageDigest
 
 /**
  * Реестр TTS-движков. Прямой порт `app/tts/engine_registry.py`.
@@ -53,7 +56,42 @@ class EngineRegistry(
         add(GeminiTtsEngine.ENGINE_INFO)
         add(AzureTtsEngine.ENGINE_INFO)
         add(CustomHttpTtsEngine.ENGINE_INFO)
+
+        // Data-driven local TTS models: any catalog voice entry whose repository
+        // is a real Hugging Face id (and whose files are actually installed)
+        // contributes its own engine. This lets new local models be added by
+        // editing the catalog + downloading the repo — no adapter code needed.
+        for (entry in GenerationModelCatalog.localVoiceModelEntries()) {
+            if (isBundledCatalogModel(entry.id)) continue
+            val engine = sherpaOnnxFor(entry.id) ?: continue
+            if (engine.isAvailable()) add(engine.info)
+        }
     }
+
+    /** True when a catalog voice entry is served by a bundled engine above. */
+    private fun isBundledCatalogModel(modelId: String): Boolean =
+        modelId == "kokoro-82m" || modelId == "piper-vits"
+
+    /**
+     * Builds (or reuses) a [SherpaOnnxLocalEngine] for a catalog voice model id.
+     * Returns null when the entry is not a local, HF-backed voice entry.
+     */
+    private fun sherpaOnnxFor(modelId: String): SherpaOnnxLocalEngine? {
+        val entry = GenerationModelCatalog.entries.firstOrNull { it.id == modelId } ?: return null
+        val repo = GenerationModelCatalog.repositoryFor(modelId) ?: return null
+        val modelDir = File(appContext.filesDir, "models/${directoryName(repo)}")
+        return SherpaOnnxLocalEngine(
+            modelDir = modelDir,
+            engineId = modelId,
+            displayName = entry.title,
+        )
+    }
+
+    private fun directoryName(repoId: String): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest(repoId.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+            .take(24)
 
     /** Получить или создать экземпляр движка по id. */
     @Synchronized
@@ -109,7 +147,7 @@ class EngineRegistry(
                     responseUrlField = cfg["responseUrlField"]?.ifEmpty { null },
                 ),
             )
-            else -> null
+            else -> sherpaOnnxFor(id)?.takeIf { !isBundledCatalogModel(it.info.id) }
         }
     }
 
