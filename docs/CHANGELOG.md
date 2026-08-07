@@ -2,6 +2,37 @@
 
 Все значимые изменения в T2V документируются здесь.
 
+## [Unreleased] - 2026-08-07
+
+### Added
+- **MusicGen-small через LiteRT** (`MusicGenOnnxGenerator`): зарегистрирован
+  манифест трёхступенчатого пайплайна (`text_encoder.tflite` / `lm.tflite` /
+  `audio_decoder.tflite`), каталог-запись `musicgen-small` (
+  `RuntimeInDevelopment`, `canInstall=false`), TagDocs и регистрация в
+  `GeneratorRegistry`. Генератор, как и NSynth, отдаёт `isAvailable()=false`
+  до ARM64 smoke-test на устройстве — ничего фейкового не генерирует.
+- `LiteRtModelInstaller.isSmokeTestedInstalled(manifest)` — обобщённый
+  смоук-гейт для любого LiteRT-бандла (раньше был только для NSynth).
+
+### Fixed
+- **Kokoro зависание на длинных текстах** (>3 000 символов): `KokoroTtsEngine`
+  теперь дробит текст на предложения по ≤1200 символов (`splitLongText`),
+  синтезирует каждый кусок отдельным вызовом `OfflineTts.generate()` и
+  склеивает PCM (`concat`). Каждый нативный вызов остаётся далеко ниже
+  порога зависания.
+- **`timelineStartMs=0` для всех `<music>/<sfx>` клипов**: вызов
+  `AudioTagInserter.insert()` перенесён из начала `GenerationPipeline`
+  в конец цикла voice-сегментов (до кодирования), когда `durationMs`
+  сегментов уже известны. Позиция клипа считается по реальной длительности
+  речи, а не по нулям.
+
+### Known issues (отложено)
+- **ElevenLabs clone UI** не реагирует на нажатие «Создать клон».
+
+### Notes
+- Подписка / монетизация **отложены** (см. `docs/AI_HANDOFF.md`).
+- Сборка — только через GitHub Actions (`android.yml`), без локальных скриптов.
+
 ## [Unreleased] - 2026-07-28
 
 ### Added

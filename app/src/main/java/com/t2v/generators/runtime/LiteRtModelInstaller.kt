@@ -96,6 +96,10 @@ class LiteRtModelInstaller(
     fun isSmokeTested(): Boolean =
         File(effectiveRoot, "${LiteRtModelRuntime.NSYNTH_WAVENET.modelId}/.smoke-tested").isFile
 
+    /** True when the bundle for [manifest] has been smoke-tested on a device. */
+    fun isSmokeTestedInstalled(manifest: LiteRtModelRuntime.BundleManifest): Boolean =
+        File(effectiveRoot, "${manifest.modelId}/.smoke-tested").isFile
+
     private fun sha256Of(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input ->

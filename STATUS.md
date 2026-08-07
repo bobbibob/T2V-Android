@@ -24,12 +24,15 @@
 - Тесты: writeSilence, pause ms/s, clean, currencies, Num2Words — все зелёные
 - Документация: 24 файла в docs/
 
-❌ Не готово / отложено (без подписки):
-- Реальная AI-генерация музыки (MusicGen через ONNX) — следующий в очереди
+✅ Сделанные фиксы (последняя сессия, 2026-08-07):
+- Фикс Kokoro зависания (>3к символов) — `splitLongText()` режет ≤1200 символов
+- Фикс AudioTagInserter.positionFor (timelineStartMs=0) — insert после цикла
+- Авто-открытие AudioEditor при наличии тегов (уже было в GenerationScreen)
+- MusicGenOnnxGenerator зарегистрирован (каркас: манифест, каталог, registry)
+
+❌ Не готово / отложено:
+- Реальная AI-генерация музыки (MusicGen): каркас готов, нужен ARM64 smoke-test
 - sherpa-onnx TTS с клонированием голоса
-- Авто-открытие AudioEditor после генерации с тегами
-- Фикс Kokoro зависания на >3к символов
-- Фикс AudioTagInserter.positionFor (timelineStartMs=0)
 - Починка ElevenLabs clone UI
 - Визуальный waveform-timeline (drag/trim/split)
 - Voice gallery sync через GitHub
@@ -54,11 +57,11 @@
 | # | Задача | Статус | Комментарий |
 |---|---|---|---|
 | 3 | Вернуть скачивание моделей | ✅ Сделано | `DownloadableModelCard` в `codex/models-download` |
-| 1 | MusicGen через ONNX | 📋 Следующий | Кандидаты: `wide-video/musicgen-small-v1.0.0` (int8 ~422 МБ) |
+| — | Фикс Kokoro зависания | ✅ Сделано | `splitLongText()` режет текст на предложения ≤1200 символов |
+| — | Фикс `AudioTagInserter.positionFitFor` | ✅ Сделано | `insert()` после цикла voice-сегментов |
+| — | Авто-открытие AudioEditor | ✅ Сделано | UI в `GenerationScreen` |
+| 1 | MusicGen через ONNX | 🚧 Каркас готов | `MusicGenOnnxGenerator` зарегистрирован; нужен ARM64 smoke-test |
 | 2 | sherpa-onnx клонирование | 📋 Очередь | sherpa-onnx runtime подключён, нужна модель + UI |
-| — | Авто-открытие AudioEditor | 📋 Очередь | `GenerationPipeline.Progress.audioTagClips` уже считается |
-| — | Фикс Kokoro зависания | 📋 Очередь | Возможно таймаут на `engine.synthesize()` |
-| — | Фикс `AudioTagInserter.positionFor` | 📋 Очередь | Перенести `insert()` после цикла voice-сегментов |
 
 ## Следующие шаги (после MusicGen)
 

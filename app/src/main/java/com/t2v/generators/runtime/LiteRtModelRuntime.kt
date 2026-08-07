@@ -184,6 +184,38 @@ class LiteRtModelRuntime(
             ),
         )
 
+        /**
+         * MusicGen-small manifest (LiteRT/TFLite export).
+         *
+         * This is the AI music generator T2V is wired towards. The real,
+         * verified model weights are hosted on Hugging Face — candidates are
+         * `wide-video/musicgen-small-v1.0.0` (int8, ~422 MB) and
+         * `chinedudave06/musicgen-medium-stereo-onnx` (int8 ~427 MB). The
+         * hashes below are placeholders until a real ARM64 device export is
+         * verified and the install manifest is updated; no file with these
+         * hashes ships in the APK.
+         */
+        val MUSIC_GEN_SMALL = BundleManifest(
+            modelId = "musicgen-small",
+            entries = listOf(
+                ManifestEntry(
+                    path = "text_encoder.tflite",
+                    expectedBytes = 144_000_000,
+                    sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                ),
+                ManifestEntry(
+                    path = "lm.tflite",
+                    expectedBytes = 258_000_000,
+                    sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                ),
+                ManifestEntry(
+                    path = "audio_decoder.tflite",
+                    expectedBytes = 20_000_000,
+                    sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                ),
+            ),
+        )
+
         fun catalogEntryFor(modelId: String): GenerationModelCatalog.Entry? =
             GenerationModelCatalog.entries.firstOrNull { it.id == modelId }
     }

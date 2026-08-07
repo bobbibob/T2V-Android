@@ -68,27 +68,33 @@
       для скачивания любой модели из каталога.
 - [x] TagDocs Info dialog на каждой model/generator/engine карточке.
 - [x] 11 локалей strings.xml покрытие всех новых строк.
+- [x] **MusicGen через ONNX/LiteRT** — `MusicGenOnnxGenerator` зарегистрирован
+      (манифест text_encoder/lm/audio_decoder, каталог `musicgen-small`,
+      TagDocs, `GeneratorRegistry`). Смоук-тест ARM64 ещё не пройден, поэтому
+      `isAvailable()=false` — как у NSynth.
+- [x] **Фикс Kokoro зависания** на длинных текстах (>3к символов) —
+      `KokoroTtsEngine.splitLongText()` режет на предложения ≤1200 символов,
+      синтез идёт кусками.
+- [x] **Фикс `AudioTagInserter.positionFor`** — `insert()` перенесён после
+      цикла voice-сегментов в `GenerationPipeline`, `timelineStartMs`
+      считается из реальных `durationMs`.
+- [x] **Авто-открытие AudioEditor** после генерации при наличии `<music>/<sfx>`
+      клипов (реализовано в `GenerationScreen`, LaunchedEffect на
+      `audioTagClips`).
 
 ## 🚧 В работе (v0.2.0 → v0.3.0)
 
 ### Сейчас
 
-- [ ] **MusicGen через ONNX** — реальная AI-генерация музыки. MusicGen
-      encoder-decoder, нужен LiteRT-совместимый экспорт. Кандидаты:
-      `wide-video/musicgen-small-v1.0.0` (int8 ~422 МБ), `chinedudave06/
-      musicgen-medium-stereo-onnx` (int8 ~427 МБ). TFLite-wrapper ещё не
-      написан.
+- [ ] **MusicGen смоук-тест на устройстве** — реальный экспорт .tflite под
+      ARM64, скачивание через `HuggingFaceRepository`, проверка WAV + SHA-256,
+      `markSmokeTested()`. До этого MusicGen не выбирается в UI.
 - [ ] **sherpa-onnx TTS с клонированием голоса** — sherpa-onnx Android
       runtime уже подключён, нужна модель (PocketTTS / ZipVoice / XTTS-v2
       sherpa-onnx fork) + UI для reference audio. Кандидаты:
       `csukuangfj/sherpa-onnx-pocketsv-zh`, `k2-fsa/sherpa-onnx` releases.
-- [ ] **Авто-открытие AudioEditor** после генерации если есть
-      `<music>/<sfx>` клипы. `GenerationPipeline.Progress.audioTagClips`
-      уже подсчитывает; UI ещё не реагирует.
-- [ ] **Фикс Kokoro зависания** на длинных текстах (>3к символов).
-- [ ] **Фикс `AudioTagInserter.positionFor`** — сейчас `timelineStartMs=0`
-      потому что `insert()` вызывается ДО voice-сегментов. Перенести
-      после цикла.
+- [ ] **Авто-открытие AudioEditor** — ✅ UI-часть сделана; осталось проверить
+      end-to-end на устройстве с реальными тегами.
 
 ### Дальше (v0.3.0+)
 

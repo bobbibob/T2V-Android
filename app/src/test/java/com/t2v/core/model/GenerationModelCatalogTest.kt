@@ -14,6 +14,30 @@ class GenerationModelCatalogTest {
     }
 
     @Test
+    fun `musicgen catalog entry is registered, in development and documented`() {
+        val musicGen = GenerationModelCatalog.entries.single { it.id == "musicgen-small" }
+        assertEquals(GenerationModelCatalog.Support.RuntimeInDevelopment, musicGen.support)
+        assertEquals(false, musicGen.canInstall)
+        assertEquals(
+            setOf(GenerationModelCatalog.Category.Music),
+            musicGen.categories,
+        )
+        assertEquals(
+            GenerationModelCatalog.Runtime.LiteRt,
+            musicGen.requirements.runtime,
+        )
+        assertNotNull("MusicGen needs TagDocs", musicGen.tags)
+        assertNotNull(
+            "MusicGen must expose its known repository",
+            GenerationModelCatalog.repositoryFor("musicgen-small"),
+        )
+        assertNotNull(
+            "Generator id must map to MusicGen TagDocs",
+            GenerationModelCatalog.tagDocsForGenerator("musicgen-small"),
+        )
+    }
+
+    @Test
     fun `catalog ids are unique and verified entries have a size`() {
         val entries = GenerationModelCatalog.entries
 

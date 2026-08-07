@@ -72,17 +72,23 @@
 
 ### Реализовано в коде, но с известными ограничениями:
 
-- **Kokoro inference зависает** на длинных текстах (>3 000 символов).
-  Audiobook #3 застрял в `running` навсегда после повторного нажатия self-test.
-  Возможная причина: ONNX-сессия не возвращается или out-of-memory.
-  **Не починено** — отложено.
-- **`<music>/<sfx>` клипы имеют `timelineStartMs = 0`** (баг).
-  Причина: `AudioTagInserter.insert()` вызывается ДО генерации voice-сегментов
-  (в `GenerationPipeline.kt:109`), когда `durationMs=0`. Должен вызываться
-  после цикла. **Не починено** — отложено.
+- **Kokoro inference зависает** на длинных текстах (>3 000 символов):
+  **ПОЧИНЕНО** — `KokoroTtsEngine.splitLongText()` режет текст на
+  предложения ≤1200 символов, каждый кусок синтезируется отдельным вызовом
+  `OfflineTts.generate()`, PCM склеивается. Нативные вызовы больше не
+  превышают порог.
+- **`<music>/<sfx>` клипы имеют `timelineStartMs = 0`** (баг):
+  **ПОЧИНЕНО** — `AudioTagInserter.insert()` перенесён в `GenerationPipeline`
+  из начала в конец цикла voice-сегментов, когда `durationMs` уже известны.
+  Позиция клипа теперь считается по реальной длительности речи.
 - **ElevenLabs clone UI не реагирует** на нажатие «Создать клон».
   `VoicesScreen.kt` ломался 4 раза, был revert'нут в `8fc42a0`.
   **Не починено** — отложено.
+- **MusicGen** — `MusicGenOnnxGenerator` зарегистрирован (манифест
+  text_encoder/lm/audio_decoder, каталог `musicgen-small`, TagDocs,
+  `GeneratorRegistry`), но **ARM64 smoke-test не пройден**, поэтому
+  `isAvailable()=false`. Нужен реальный LiteRT-совместимый .tflite под
+  Android и скачивание через `HuggingFaceRepository` + `markSmokeTested()`.
 
 ### Локальные модели (registered, но пока без скачивания через UI):
 
@@ -128,11 +134,11 @@
 | # | Задача | Статус | Комментарий |
 |---|---|---|---|
 | 3 | Вернуть скачивание моделей в UI | ✅ Сделано | `DownloadableModelCard`, `downloadModelFromCatalog()` |
-| 1 | MusicGen через ONNX | 📋 Следующий | Нужен реальный LiteRT-совместимый .tflite под Android. MusicGen — encoder-decoder, не LiteRT-формат. Возможно RAVE / Diffsound / AudioLDM TFLite как альтернативы |
+| 1 | MusicGen через ONNX | 🚧 Каркас готов | `MusicGenOnnxGenerator` зарегистрирован (каталог `musicgen-small`, TagDocs, манифест LiteRT). Остался ARM64 smoke-test + скачивание через `HuggingFaceRepository` |
+| — | Фикс Kokoro зависания | ✅ Сделано | `splitLongText()` режет текст ≤1200 символов на предложения; синтез кусками |
+| — | Фикс `AudioTagInserter.positionFor` (timelineStartMs=0) | ✅ Сделано | `insert()` перенесён после цикла voice-сегментов |
+| — | Авто-открытие AudioEditor после генерации с тегами | ✅ Сделано | UI в `GenerationScreen` (LaunchedEffect на `audioTagClips`) |
 | 2 | sherpa-onnx TTS с клонированием | 📋 Очередь | sherpa-onnx Android runtime уже подключён, нужна модель (PocketTTS / ZipVoice / XTTS-v2) + UI для reference audio |
-| — | Авто-открытие AudioEditor после генерации с тегами | 📋 Очередь | `GenerationPipeline.Progress.audioTagClips` уже подсчитывает; UI ещё не реагирует |
-| — | Фикс Kokoro зависания | 📋 Очередь | Возможно таймаут на `engine.synthesize()` |
-| — | Фикс `AudioTagInserter.positionFor` (timelineStartMs=0) | 📋 Очередь | Перенести `insert()` после цикла voice-сегментов |
 
 ## Что отложено (без подписки — навсегда, не «до подписки»)
 

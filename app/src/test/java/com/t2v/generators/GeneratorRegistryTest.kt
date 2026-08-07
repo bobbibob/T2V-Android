@@ -9,7 +9,6 @@ import com.t2v.tts.registry.EngineRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -82,5 +81,46 @@ class GeneratorRegistryTest {
             assertEquals(64, entry.sha256.length)
         }
         assertTrue(runtime.probe() is LiteRtModelRuntime.ProbeResult.Unsupported)
+    }
+
+    @Test
+    fun `musicgen manifest declares every required file and caps`() {
+        val m = LiteRtModelRuntime.MUSIC_GEN_SMALL
+        assertEquals("musicgen-small", m.modelId)
+        assertEquals(3, m.entries.size)
+        for (entry in m.entries) {
+            assertTrue("Entry ${entry.path} must declare a size", entry.expectedBytes > 0)
+            assertEquals(64, entry.sha256.length)
+        }
+        // Represents the three-stage encoder/LM/decoder pipeline.
+        assertTrue(m.entries.any { it.path == "text_encoder.tflite" })
+        assertTrue(m.entries.any { it.path == "lm.tflite" })
+        assertTrue(m.entries.any { it.path == "audio_decoder.tflite" })
+    }
+
+    @Test
+    fun `musicgen registry id maps to the music category and is gated`() {
+        val manifest = LiteRtModelRuntime.MUSIC_GEN_SMALL
+        assertEquals("musicgen-small", manifest.modelId)
+        // The catalog keeps the entry in RuntimeInDevelopment (canInstall=false)
+        // and exposes TagDocs for the generator id. A plain JVM unit test
+        // cannot build the native LiteRT runtime, so we assert the registration
+        // contract that governs selection, not inference.
+        val entry = com.t2v.core.model.GenerationModelCatalog.entries
+            .firstOrNull { it.id == "musicgen-small" }
+        assertNotNull("MusicGen catalog entry must exist", entry)
+        assertEquals(
+            com.t2v.core.model.GenerationModelCatalog.Support.RuntimeInDevelopment,
+            entry!!.support,
+        )
+        assertEquals(false, entry.canInstall)
+        assertEquals(
+            setOf(com.t2v.core.model.GenerationModelCatalog.Category.Music),
+            entry.categories,
+        )
+        assertNotNull(
+            "Generator id must be documented",
+            com.t2v.core.model.GenerationModelCatalog.tagDocsForGenerator("musicgen-small"),
+        )
     }
 }

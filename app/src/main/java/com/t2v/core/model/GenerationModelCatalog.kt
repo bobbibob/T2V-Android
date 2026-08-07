@@ -224,6 +224,22 @@ object GenerationModelCatalog {
         ),
     )
 
+    private val MUSIC_GEN_TAGS = TagDocs(
+        tagline = "MusicGen через LiteRT — настоящая AI-генерация музыки на устройстве. Модель ещё не прошла ARM64 smoke-test, поэтому карточка отображается, но не выбирается.",
+        supported = listOf(
+            "Свободный промпт: жанр, инструменты, настроение, BPM",
+            "{{duration 1..30}} - длительность в секундах",
+        ),
+        ignored = listOf(
+            "{{emotion}} / {{delivery}} / вокальные подсказки - у музыки нет речевого слоя",
+        ),
+        examples = listOf(
+            "uplifting synth-pop loop, 128 BPM, analog bass",
+            "dark ambient drone with slow filter sweep",
+        ),
+        promptHelp = "Конкретность решает: инструменты, темп, настроение, стиль.",
+    )
+
     private val ELEVEN_SFX_TAGS = TagDocs(
         tagline = "ElevenLabs Sound Effects API. Свободный промпт, длительность 1-22 секунды.",
         supported = listOf(
@@ -467,6 +483,25 @@ object GenerationModelCatalog {
             notes = "Short instrument-tone SFX (4 sec mono 8 kHz). Will be selectable once the " +
                 "ARM64 smoke-test on a real device confirms inference time and SHA-256.",
         ),
+        Entry(
+            id = "musicgen-small",
+            title = "MusicGen (on-device music)",
+            categories = setOf(Category.Music),
+            capabilities = setOf(Capability.MusicGeneration),
+            requirements = Requirements(
+                minimumRamMb = 3_072,
+                runtime = Runtime.LiteRt,
+                runtimeBundled = false,
+            ),
+            tags = MUSIC_GEN_TAGS,
+            support = Support.RuntimeInDevelopment,
+            approximateDownloadBytes = 422_000_000L,
+            license = "CC-BY-NC 4.0 (MusicGen-small)",
+            repository = "wide-video/musicgen-small-v1.0.0",
+            revision = null,
+            notes = "Real AI music generation via MusicGen-small LiteRT export. Not selectable until " +
+                "the ARM64 smoke-test confirms inference and SHA-256.",
+        ),
     )
 
 
@@ -480,6 +515,7 @@ object GenerationModelCatalog {
         "litert.stable-audio-open-small.music" to STABLE_AUDIO_TAGS,
         "litert.stable-audio-clip.sound" to STABLE_AUDIO_CLIP_TAGS,
         "nsynth-wavenet" to STABLE_AUDIO_CLIP_TAGS,
+        "musicgen-small" to MUSIC_GEN_TAGS,
     )
 
     /** Returns the TagDocs for a catalog model id, or null if not documented. */

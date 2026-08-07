@@ -2,6 +2,7 @@ package com.t2v.generators
 
 import android.content.Context
 import com.t2v.generators.impl.ElevenLabsSoundEffectsGenerator
+import com.t2v.generators.impl.MusicGenOnnxGenerator
 import com.t2v.generators.impl.NSynthSoundGenerator
 import com.t2v.generators.impl.StableAudioMusicGenerator
 import com.t2v.generators.impl.StableAudioSoundGenerator
@@ -28,6 +29,7 @@ class GeneratorRegistry(
         add(ElevenLabsSoundEffectsGenerator(apiKey = apiKey.orEmpty()))
         add(StableAudioMusicGenerator(appContext, liteRtRuntime, installer))
         add(StableAudioSoundGenerator(appContext, liteRtRuntime, installer))
+        add(MusicGenOnnxGenerator(appContext, liteRtRuntime, installer))
     }
 
     fun forCategory(category: GeneratorCategory): List<Generator> =

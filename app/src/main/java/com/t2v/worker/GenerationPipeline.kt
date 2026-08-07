@@ -103,14 +103,6 @@ class GenerationPipeline(
                 )
             }
 
-            // Insert any <music>/<sfx> tags produced by the markup stage. Each
-            // tag splits the voice stream so we can place the clip exactly where
-            // the tag opened in the source text.
-            val insertedClips = audioTagInserter?.insert(audioTags, audiobookId) ?: 0
-            if (insertedClips > 0) {
-                _progress.update { it.copy(audioTagClips = insertedClips) }
-            }
-
             for ((idx, chunk) in chunks.withIndex()) {
                 if (cancelled) {
                     _progress.update { it.copy(phase = Progress.Phase.Cancelled) }
@@ -186,6 +178,18 @@ class GenerationPipeline(
                     segmentWavs += post
                 }
                 _progress.update { it.copy(done = idx + 1) }
+            }
+
+            // Insert any <music>/<sfx> tags produced by the markup stage. Each tag
+            // splits the voice stream so we can place the clip exactly where
+            // the tag opened in the source text. This must run AFTER the voice
+            // loop: RoomTagPersistence.positionFor() sums the pauseBeforeMs +
+            // durationMs of every preceding segment, and those durations only
+            // become known once synthesis has finished. Calling insert()
+            // earlier produced timelineStartMs=0 for every clip.
+            val insertedClips = audioTagInserter?.insert(audioTags, audiobookId) ?: 0
+            if (insertedClips > 0) {
+                _progress.update { it.copy(audioTagClips = insertedClips) }
             }
 
             // Кодируем
