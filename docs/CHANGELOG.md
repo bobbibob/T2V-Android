@@ -34,6 +34,15 @@
   выпадающий список языка (`ExposedDropdownMenuBox`). Выбранный язык
   фильтрует Piper/VITS-голоса и Kokoro (английский) — показываются только
   модели, поддерживающие выбранный язык.
+- **Реальные Piper/VITS голоса с Hugging Face**: в `GenerationModelCatalog`
+  добавлены 12 записей `vits-piper-*` (uk-UA, ca-ES, cs-CZ, da-DK, el-GR,
+  fa-IR, fi-FI, hu-HU, nl-NL, pt-BR, ro-RO, tr-TR) с реальными HF-репозиториями
+  `csukuangfj/vits-piper-*`. В APK нет ни одного файла модели — только
+  метаданные каталога; файлы скачиваются по кнопке через
+  `HuggingFaceRepository.install()`. Записи помечены `downloadAllFiles=true`,
+  чтобы инсталлер качал весь репозиторий целиком (включая `espeak-ng-data`
+  без расширений). После установки каждая запись автоматически становится
+  движком `SherpaOnnxLocalEngine` через `EngineRegistry.localVoiceModelEntries()`.
 
 ### Fixed
 - **Kokoro зависание на длинных текстах** (>3 000 символов): `KokoroTtsEngine`

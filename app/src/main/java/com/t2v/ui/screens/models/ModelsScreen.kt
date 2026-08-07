@@ -574,16 +574,71 @@ private fun VoiceModelSection(
             onInfo = onInfo,
         )
     }
+
+    // Каталоговые Piper/VITS голоса с Hugging Face: каждый entry скачивается
+    // по кнопке (файлов в APK нет) и после установки становится движком.
+    val hfVoiceEntries = GenerationModelCatalog.localVoiceModelEntries()
+        .filter { it.id != "kokoro-82m" && it.id != "piper-vits" }
+    val visibleHfEntries = if (selectedLanguage == ALL_LANGUAGES) {
+        hfVoiceEntries
+    } else {
+        hfVoiceEntries.filter { it.language == selectedLanguage }
+    }
+    if (visibleHfEntries.isNotEmpty()) {
+        Text(
+            text = "Piper/VITS с Hugging Face",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = "Каждая модель скачивается по кнопке и работает целиком на телефоне.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        visibleHfEntries.forEach { entry ->
+            DownloadableModelCard(
+                catalogId = entry.id,
+                title = entry.title,
+                status = "${entry.notes} • примерно ${formatBytes(entry.approximateDownloadBytes ?: 0)}",
+                tags = GenerationModelCatalog.tagDocsForEngine("piper_ru"),
+                selected = state.selectedVoiceModelId == entry.id,
+                enabled = true,
+                installable = entry.canInstall,
+                state = state,
+                vm = vm,
+                infoRepository = GenerationModelCatalog.repositoryFor(entry.id),
+                infoLicense = GenerationModelCatalog.licenseFor(entry.id),
+                infoRuntime = "SherpaOnnx (встроен)",
+                infoCategoryLabel = infoCategoryLocalLabel,
+                onInfo = {
+                    onInfo(
+                        InfoTarget(
+                            title = "Piper/VITS • ${entry.title}",
+                            tagline = GenerationModelCatalog.tagDocsForEngine("piper_ru")?.tagline,
+                            tags = GenerationModelCatalog.tagDocsForEngine("piper_ru"),
+                            runtime = "SherpaOnnx (встроен)",
+                            repository = GenerationModelCatalog.repositoryFor(entry.id),
+                            license = GenerationModelCatalog.licenseFor(entry.id),
+                            categoryLabel = infoCategoryLocalLabel,
+                        ),
+                    )
+                },
+            )
+        }
+    }
 }
 
 private const val ALL_LANGUAGES = "all"
 
 private val KOKORO_LANGUAGES = setOf("en-US", "en-GB")
 
-/** Языки, доступные в выпадающем фильтре: Piper + английский (Kokoro). */
+/** Языки, доступные в выпадающем фильтре: Piper + каталог HF + английский (Kokoro). */
 private fun voiceFilterLanguages(): List<String> {
     val all = buildSet {
         addAll(PiperRussianTtsEngine.RUSSIAN_VOICES.map { it.language })
+        addAll(
+            GenerationModelCatalog.localVoiceModelEntries()
+                .map { it.language }
+                .filter { it.isNotBlank() },
+        )
         addAll(KOKORO_LANGUAGES)
     }
     return all.sorted()
@@ -606,6 +661,18 @@ private fun piperLanguageLabels(): Map<String, String> = mapOf(
     "bn-IN" to "Бенгальский (bn-IN, SherpaOnnx + VITS medium)",
     "ar" to "Арабский (ar, SherpaOnnx + VITS medium)",
     "ko-KR" to "Корейский (ko-KR, SherpaOnnx + VITS medium)",
+    "uk-UA" to "Украинский (uk-UA, SherpaOnnx + VITS)",
+    "ca-ES" to "Каталанский (ca-ES, SherpaOnnx + VITS medium)",
+    "cs-CZ" to "Чешский (cs-CZ, SherpaOnnx + VITS medium)",
+    "da-DK" to "Датский (da-DK, SherpaOnnx + VITS medium)",
+    "el-GR" to "Греческий (el-GR, SherpaOnnx + VITS)",
+    "fa-IR" to "Персидский (fa-IR, SherpaOnnx + VITS medium)",
+    "fi-FI" to "Финский (fi-FI, SherpaOnnx + VITS)",
+    "hu-HU" to "Венгерский (hu-HU, SherpaOnnx + VITS medium)",
+    "nl-NL" to "Нидерландский (nl-NL, SherpaOnnx + VITS medium)",
+    "pt-BR" to "Португальский (pt-BR, SherpaOnnx + VITS medium)",
+    "ro-RO" to "Румынский (ro-RO, SherpaOnnx + VITS medium)",
+    "tr-TR" to "Турецкий (tr-TR, SherpaOnnx + VITS medium)",
 )
 
 /** Короткое название языка для пунктов выпадающего списка. */
@@ -625,6 +692,18 @@ private fun languageShortName(language: String): String = when (language) {
     "bn-IN" -> "Бенгальский (bn-IN)"
     "ar" -> "Арабский (ar)"
     "ko-KR" -> "Корейский (ko-KR)"
+    "uk-UA" -> "Украинский (uk-UA)"
+    "ca-ES" -> "Каталанский (ca-ES)"
+    "cs-CZ" -> "Чешский (cs-CZ)"
+    "da-DK" -> "Датский (da-DK)"
+    "el-GR" -> "Греческий (el-GR)"
+    "fa-IR" -> "Персидский (fa-IR)"
+    "fi-FI" -> "Финский (fi-FI)"
+    "hu-HU" -> "Венгерский (hu-HU)"
+    "nl-NL" -> "Нидерландский (nl-NL)"
+    "pt-BR" -> "Португальский (pt-BR)"
+    "ro-RO" -> "Румынский (ro-RO)"
+    "tr-TR" -> "Турецкий (tr-TR)"
     else -> language
 }
 
@@ -1309,6 +1388,16 @@ class ModelsViewModel(private val context: android.content.Context) : ViewModel(
                         it[SettingsRepository.Keys.TTS_ENGINE] = "piper_ru"
                         it[SettingsRepository.Keys.VOICE_ID] = voiceId
                         it[SettingsRepository.Keys.LANGUAGE] = voice?.language ?: ""
+                    }
+                    // Каталоговый HF-голос (SherpaOnnxLocalEngine), например
+                    // "vits-piper-uk-ua". Движок строится реестром по id записи.
+                    GenerationModelCatalog.localVoiceModelEntries()
+                        .any { it.id == modelId } -> {
+                        val entry = GenerationModelCatalog.entries
+                            .firstOrNull { it.id == modelId }
+                        it[SettingsRepository.Keys.TTS_ENGINE] = modelId
+                        it[SettingsRepository.Keys.VOICE_ID] = modelId
+                        it[SettingsRepository.Keys.LANGUAGE] = entry?.language ?: ""
                     }
                 }
             }

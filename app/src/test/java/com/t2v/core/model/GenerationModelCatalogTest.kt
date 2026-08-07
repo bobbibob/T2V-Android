@@ -123,6 +123,46 @@ class GenerationModelCatalogTest {
     }
 
     @Test
+    fun `HuggingFace Piper voices are installable and carry a language`() {
+        val ids = listOf(
+            "vits-piper-uk-ua",
+            "vits-piper-ca-es",
+            "vits-piper-cs-cz",
+            "vits-piper-da-dk",
+            "vits-piper-el-gr",
+            "vits-piper-fa-ir",
+            "vits-piper-fi-fi",
+            "vits-piper-hu-hu",
+            "vits-piper-nl-nl",
+            "vits-piper-pt-br",
+            "vits-piper-ro-ro",
+            "vits-piper-tr-tr",
+        )
+        for (id in ids) {
+            val entry = GenerationModelCatalog.entries.single { it.id == id }
+            assertTrue("$id must be installable", entry.canInstall)
+            assertTrue("$id must be a real HF repository", GenerationModelCatalog.isHuggingFaceRepository(id))
+            assertTrue("$id must download all files", entry.downloadAllFiles)
+            assertTrue("$id must declare a language", entry.language.isNotBlank())
+            assertEquals(GenerationModelCatalog.Category.Voice, entry.categories.single())
+            assertEquals(
+                GenerationModelCatalog.Runtime.SherpaOnnx,
+                entry.requirements.runtime,
+            )
+        }
+    }
+
+    @Test
+    fun `voice filter languages include catalog Piper voices`() {
+        val languages = GenerationModelCatalog.localVoiceModelEntries()
+            .map { it.language }
+            .filter { it.isNotBlank() }
+        assertTrue("New HF Piper languages must be present", languages.contains("uk-UA"))
+        assertTrue(languages.contains("tr-TR"))
+        assertTrue(languages.contains("pt-BR"))
+    }
+
+    @Test
     fun `stable audio shares LiteRT runtime and is verified for install`() {
         val music = GenerationModelCatalog.forCategory(
             GenerationModelCatalog.Category.Music,

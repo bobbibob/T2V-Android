@@ -135,7 +135,8 @@
 |---|---|---|---|
 | 3 | Вернуть скачивание моделей в UI | ✅ Сделано | `DownloadableModelCard`, `downloadModelFromCatalog()` |
 | 1 | MusicGen через ONNX | 🚧 Каркас готов | Зарегистрирован + UI-карточка `musicgen-small`. **Кнопка «Скачать» скрыта** — публичного tflite-экспорта нет; репозиторий `wide-video/...` только ONNX и отклоняется `HuggingFaceRepository.install` (нет `.tflite`). Остался реальный tflite-экспорт + ARM64 smoke-test + инференс |
-| — | Динамические локальные TTS-модели | ✅ Каркас | `SherpaOnnxLocalEngine` + `EngineRegistry` каталожно обнаруживает установленные sherpa-onnx модели (без нового адаптера-кода) |
+| — | Динамические локальные TTS-модели | ✅ Сделано | `SherpaOnnxLocalEngine` + `EngineRegistry` каталожно обнаруживает установленные sherpa-onnx модели (без нового адаптера-кода) |
+| — | Реальные Piper/VITS голоса с Hugging Face | ✅ Сделано | 12 записей `vits-piper-*` (uk-UA, ca-ES, cs-CZ, da-DK, el-GR, fa-IR, fi-FI, hu-HU, nl-NL, pt-BR, ro-RO, tr-TR) в каталоге + карточки с кнопкой «Скачать» в Models → Голос; `downloadAllFiles=true` для загрузки `espeak-ng-data` без расширений; после установки — движок `SherpaOnnxLocalEngine` через `localVoiceModelEntries()` |
 | — | Фикс Kokoro зависания | ✅ Сделано | `splitLongText()` режет текст ≤1200 символов на предложения; синтез кусками |
 | — | Фикс `AudioTagInserter.positionFor` (timelineStartMs=0) | ✅ Сделано | `insert()` перенесён после цикла voice-сегментов |
 | — | Авто-открытие AudioEditor после генерации с тегами | ✅ Сделано | UI в `GenerationScreen` (LaunchedEffect на `audioTagClips`) |

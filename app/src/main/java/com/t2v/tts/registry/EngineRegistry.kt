@@ -84,6 +84,8 @@ class EngineRegistry(
             modelDir = modelDir,
             engineId = modelId,
             displayName = entry.title,
+            voiceLabel = entry.title,
+            language = entry.language,
         )
     }
 

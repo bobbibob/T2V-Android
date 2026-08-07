@@ -164,7 +164,14 @@ class HuggingFaceRepository(
             it.repository == model.id &&
                 it.requirements.runtime == GenerationModelCatalog.Runtime.LiteRt
         }
-        val files = if (model.id == KOKORO_REPOSITORY) {
+        // VITS/Piper voices ship espeak-ng-data support files without any
+        // extension, so the weight+support heuristics would silently drop them.
+        // Entries flagged downloadAllFiles download every repository file
+        // (same behaviour as Kokoro).
+        val downloadsEverything = GenerationModelCatalog.entries.any {
+            it.repository == model.id && it.downloadAllFiles
+        }
+        val files = if (model.id == KOKORO_REPOSITORY || downloadsEverything) {
             model.files.filter {
                 it.path != ".gitattributes" &&
                     !it.path.equals("README.md", ignoreCase = true)
@@ -238,7 +245,10 @@ class HuggingFaceRepository(
                 }
             }
             writeManifest(directory, model.id)
-            if (modelsTreeUri.isNotBlank() && model.id != KOKORO_REPOSITORY) {
+            // Kokoro and full-repo VITS voices must stay in app-private storage:
+            // EngineRegistry locates them by hashing the repository id under
+            // filesDir/models. A user-selected folder would hide them from TTS.
+            if (modelsTreeUri.isNotBlank() && model.id != KOKORO_REPOSITORY && !downloadsEverything) {
                 val installed = copyToDocumentTree(directory, model.id)
                 directory.deleteRecursively()
                 installed

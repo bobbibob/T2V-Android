@@ -31,6 +31,7 @@ class SherpaOnnxLocalEngine(
     private val displayName: String,
     private val voiceLabel: String = displayName,
     private val sampleRate: Int = 22050,
+    private val language: String = "",
 ) : TtsEngine {
     override val info: EngineInfo = EngineInfo(
         id = engineId,
@@ -47,7 +48,7 @@ class SherpaOnnxLocalEngine(
         VoiceInfo(
             id = engineId,
             displayName = voiceLabel,
-            language = "",
+            language = language,
             gender = "",
             engineId = info.id,
             isLocal = true,

@@ -132,3 +132,7 @@ Kokoro гарантированно присутствует как fallback.
 - 2026-07-27: Bundled music/sound удалены
 - 2026-07-28: `HuggingFaceRepository.VERIFIED_ANDROID_MODELS` стал
   динамическим (из каталога)
+- 2026-08-07: добавлены 12 Piper/VITS голосов с Hugging Face (uk-UA,
+  ca-ES, cs-CZ, da-DK, el-GR, fa-IR, fi-FI, hu-HU, nl-NL, pt-BR, ro-RO,
+  tr-TR) — файлов в APK нет, качаются по кнопке (`downloadAllFiles=true`),
+  после установки автоматически становятся движками `SherpaOnnxLocalEngine`
