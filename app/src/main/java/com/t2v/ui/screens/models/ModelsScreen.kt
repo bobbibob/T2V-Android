@@ -18,11 +18,17 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -31,6 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -516,16 +523,32 @@ private fun VoiceModelSection(
     infoCategoryLocalLabel: String,
     onInfo: (InfoTarget) -> Unit,
 ) {
+    var selectedLanguage by rememberSaveable { mutableStateOf(ALL_LANGUAGES) }
+
     Text(
         text = "Доступные локальные голосовые модели",
         style = MaterialTheme.typography.titleMedium,
     )
-    KokoroCard(
-        state = state,
-        vm = vm,
-        infoCategoryLocalLabel = infoCategoryLocalLabel,
-        onInfo = onInfo,
+    LanguageFilterDropdown(
+        selectedLanguage = selectedLanguage,
+        onSelect = { selectedLanguage = it },
     )
+
+    val showKokoro = selectedLanguage == ALL_LANGUAGES || KOKORO_LANGUAGES.contains(selectedLanguage)
+    if (showKokoro) {
+        KokoroCard(
+            state = state,
+            vm = vm,
+            infoCategoryLocalLabel = infoCategoryLocalLabel,
+            onInfo = onInfo,
+        )
+    }
+
+    val piperVoices = if (selectedLanguage == ALL_LANGUAGES) {
+        PiperRussianTtsEngine.RUSSIAN_VOICES
+    } else {
+        PiperRussianTtsEngine.RUSSIAN_VOICES.filter { it.language == selectedLanguage }
+    }
 
     Text(
         text = "Локальные Piper/VITS модели",
@@ -536,26 +559,10 @@ private fun VoiceModelSection(
         style = MaterialTheme.typography.bodySmall,
     )
 
-    val groupedLanguages = PiperRussianTtsEngine.RUSSIAN_VOICES
+    val groupedLanguages = piperVoices
         .groupBy { it.language }
         .toSortedMap()
-    val languageLabels = mapOf(
-        "ru-RU" to "Русские голоса (SherpaOnnx + VITS medium)",
-        "en-US" to "Английский (en-US, SherpaOnnx + VITS medium/low)",
-        "en-GB" to "Английский (en-GB, SherpaOnnx + VITS medium)",
-        "de-DE" to "Немецкие голоса (de-DE, SherpaOnnx + VITS)",
-        "de-AT" to "Немецкий (de-AT, SherpaOnnx + VITS medium)",
-        "fr-FR" to "Французские голоса (SherpaOnnx + VITS medium)",
-        "es-ES" to "Испанские голоса (es-ES, SherpaOnnx + VITS)",
-        "es-MX" to "Испанский (es-MX, SherpaOnnx + VITS medium)",
-        "it-IT" to "Итальянский (it-IT, SherpaOnnx + VITS)",
-        "zh-CN" to "Китайский (zh-CN, SherpaOnnx + VITS medium)",
-        "ja-JP" to "Японский (ja-JP, SherpaOnnx + VITS medium)",
-        "hi-IN" to "Хинди (hi-IN, SherpaOnnx + VITS medium)",
-        "bn-IN" to "Бенгальский (bn-IN, SherpaOnnx + VITS medium)",
-        "ar" to "Арабский (ar, SherpaOnnx + VITS medium)",
-        "ko-KR" to "Корейский (ko-KR, SherpaOnnx + VITS medium)",
-    )
+    val languageLabels = piperLanguageLabels()
     groupedLanguages.forEach { (language, voices) ->
         val header = languageLabels[language]
             ?: "Язык $language (SherpaOnnx + VITS medium)"
@@ -567,6 +574,108 @@ private fun VoiceModelSection(
             infoCategoryLocalLabel = infoCategoryLocalLabel,
             onInfo = onInfo,
         )
+    }
+}
+
+private const val ALL_LANGUAGES = "all"
+
+private val KOKORO_LANGUAGES = setOf("en-US", "en-GB")
+
+/** Языки, доступные в выпадающем фильтре: Piper + английский (Kokoro). */
+private fun voiceFilterLanguages(): List<String> {
+    val all = buildSet {
+        addAll(PiperRussianTtsEngine.RUSSIAN_VOICES.map { it.language })
+        addAll(KOKORO_LANGUAGES)
+    }
+    return all.sorted()
+}
+
+/** Человекочитаемые подписи языков для фильтра и заголовков групп. */
+private fun piperLanguageLabels(): Map<String, String> = mapOf(
+    "ru-RU" to "Русские голоса (SherpaOnnx + VITS medium)",
+    "en-US" to "Английский (en-US, SherpaOnnx + VITS medium/low)",
+    "en-GB" to "Английский (en-GB, SherpaOnnx + VITS medium)",
+    "de-DE" to "Немецкие голоса (de-DE, SherpaOnnx + VITS)",
+    "de-AT" to "Немецкий (de-AT, SherpaOnnx + VITS medium)",
+    "fr-FR" to "Французские голоса (SherpaOnnx + VITS medium)",
+    "es-ES" to "Испанские голоса (es-ES, SherpaOnnx + VITS)",
+    "es-MX" to "Испанский (es-MX, SherpaOnnx + VITS medium)",
+    "it-IT" to "Итальянский (it-IT, SherpaOnnx + VITS)",
+    "zh-CN" to "Китайский (zh-CN, SherpaOnnx + VITS medium)",
+    "ja-JP" to "Японский (ja-JP, SherpaOnnx + VITS medium)",
+    "hi-IN" to "Хинди (hi-IN, SherpaOnnx + VITS medium)",
+    "bn-IN" to "Бенгальский (bn-IN, SherpaOnnx + VITS medium)",
+    "ar" to "Арабский (ar, SherpaOnnx + VITS medium)",
+    "ko-KR" to "Корейский (ko-KR, SherpaOnnx + VITS medium)",
+)
+
+/** Короткое название языка для пунктов выпадающего списка. */
+private fun languageShortName(language: String): String = when (language) {
+    "ru-RU" -> "Русский (ru)"
+    "en-US" -> "Английский (en-US)"
+    "en-GB" -> "Английский (en-GB)"
+    "de-DE" -> "Немецкий (de-DE)"
+    "de-AT" -> "Немецкий (de-AT)"
+    "fr-FR" -> "Французский (fr-FR)"
+    "es-ES" -> "Испанский (es-ES)"
+    "es-MX" -> "Испанский (es-MX)"
+    "it-IT" -> "Итальянский (it-IT)"
+    "zh-CN" -> "Китайский (zh-CN)"
+    "ja-JP" -> "Японский (ja-JP)"
+    "hi-IN" -> "Хинди (hi-IN)"
+    "bn-IN" -> "Бенгальский (bn-IN)"
+    "ar" -> "Арабский (ar)"
+    "ko-KR" -> "Корейский (ko-KR)"
+    else -> language
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LanguageFilterDropdown(
+    selectedLanguage: String,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = if (selectedLanguage == ALL_LANGUAGES) {
+                "Все языки"
+            } else {
+                languageShortName(selectedLanguage)
+            },
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Язык голоса") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Все языки") },
+                onClick = {
+                    onSelect(ALL_LANGUAGES)
+                    expanded = false
+                },
+            )
+            voiceFilterLanguages().forEach { language ->
+                DropdownMenuItem(
+                    text = { Text(languageShortName(language)) },
+                    onClick = {
+                        onSelect(language)
+                        expanded = false
+                    },
+                )
+            }
+        }
     }
 }
 

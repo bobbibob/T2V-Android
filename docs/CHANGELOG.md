@@ -30,6 +30,10 @@
 - `GenerationModelCatalog.isHuggingFaceRepository(modelId)` /
   `localVoiceModelEntries()` — хелперы, отделяющие настоящие HF-репозитории
   от release-заглушек.
+- **Фильтр по языку голоса**: в Models → Голос и на экране «Голоса» появился
+  выпадающий список языка (`ExposedDropdownMenuBox`). Выбранный язык
+  фильтрует Piper/VITS-голоса и Kokoro (английский) — показываются только
+  модели, поддерживающие выбранный язык.
 
 ### Fixed
 - **Kokoro зависание на длинных текстах** (>3 000 символов): `KokoroTtsEngine`

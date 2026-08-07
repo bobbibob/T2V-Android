@@ -17,6 +17,11 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -85,8 +91,30 @@ fun VoicesScreen(
                 Text(it, color = MaterialTheme.colorScheme.primary)
             }
             if (state.cloning) CircularProgressIndicator()
+
+            var selectedLanguage by rememberSaveable { mutableStateOf("all") }
+            val languages = remember(state.byEngine) {
+                state.byEngine.values.flatten()
+                    .map { it.language }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .sorted()
+            }
+            LanguageFilterRow(
+                selectedLanguage = selectedLanguage,
+                languages = languages,
+                onSelect = { selectedLanguage = it },
+            )
+            val filtered = if (selectedLanguage == "all") {
+                state.byEngine
+            } else {
+                state.byEngine.mapValues { (_, voices) ->
+                    voices.filter { it.language == selectedLanguage }
+                }.filterValues { it.isNotEmpty() }
+            }
+
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                state.byEngine.forEach { (engineId, voices) ->
+                filtered.forEach { (engineId, voices) ->
                     item(key = engineId) {
                         Text("$engineId (${voices.size})", style = MaterialTheme.typography.titleMedium)
                     }
@@ -98,6 +126,14 @@ fun VoicesScreen(
                                 onSelect = { vm.selectVoice(v) },
                             )
                         }
+                    }
+                }
+                if (filtered.isEmpty()) {
+                    item {
+                        Text(
+                            "Для выбранного языка нет голосов. Скачайте локальный голос на экране «Модели».",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 }
             }
@@ -158,6 +194,54 @@ fun VoicesScreen(
                 }
             },
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LanguageFilterRow(
+    selectedLanguage: String,
+    languages: List<String>,
+    onSelect: (String) -> Unit,
+) {
+    if (languages.isEmpty()) return
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = if (selectedLanguage == "all") "Все языки" else selectedLanguage,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Язык") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Все языки") },
+                onClick = {
+                    onSelect("all")
+                    expanded = false
+                },
+            )
+            languages.forEach { language ->
+                DropdownMenuItem(
+                    text = { Text(language) },
+                    onClick = {
+                        onSelect(language)
+                        expanded = false
+                    },
+                )
+            }
+        }
     }
 }
 
