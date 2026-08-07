@@ -154,19 +154,29 @@ class HuggingFaceRepository(
             "Model ${model.id} is not verified for execution on Android"
         }
         require(variant in model.variants) { "Variant does not belong to ${model.id}" }
-        // LiteRT bundles (e.g. MusicGen) need every model file, exactly like the
-        // Kokoro branch, because the three-stage encoder/LM/decoder pipeline has
-        // no single "weight" to pick. Everything else downloads one weight file
+        // LiteRT bundles (e.g. MusicGen) download only their .tflite weight
+        // files: the three-stage encoder/LM/decoder pipeline needs exactly the
+        // files listed in its runtime manifest and nothing else. A repo with
+        // no .tflite files at all (e.g. an ONNX-only export) is an error, not a
+        // silent zero-byte install. Everything else downloads one weight file
         // plus its support files.
         val isLiteRtBundle = GenerationModelCatalog.entries.any {
             it.repository == model.id &&
                 it.requirements.runtime == GenerationModelCatalog.Runtime.LiteRt
         }
-        val files = if (model.id == KOKORO_REPOSITORY || isLiteRtBundle) {
+        val files = if (model.id == KOKORO_REPOSITORY) {
             model.files.filter {
                 it.path != ".gitattributes" &&
                     !it.path.equals("README.md", ignoreCase = true)
             }
+        } else if (isLiteRtBundle) {
+            model.files
+                .filter { it.path.substringAfterLast('.').lowercase() in WEIGHT_EXTENSIONS }
+                .also { selected ->
+                    if (selected.isEmpty()) {
+                        error("Репозиторий ${model.id} не содержит .tflite файлов для LiteRT")
+                    }
+                }
         } else {
             buildList {
                 add(variant.weightFile)

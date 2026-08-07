@@ -16,10 +16,13 @@
 - **Универсальное скачивание моделей из каталога**: `ModelsViewModel
   .downloadModelFromCatalog()` теперь обрабатывает любую запись каталога с
   реальным Hugging Face-репозиторием (`author/name`), а не только Kokoro.
-  LiteRT-бандлы (например `musicgen-small`) качаются целиком
-  (`HuggingFaceRepository.install`), раз поддерживается расширение `.tflite`.
-  В Models → Music добавлена `DownloadableModelCard` для `musicgen-small`
-  (ранее карточка существовала, но не использовалась нигде).
+  LiteRT-бандлы (например `musicgen-small`) качают только свои `.tflite`
+  файлы (`HuggingFaceRepository.install`); репозиторий без `.tflite`
+  (ONNX-экспорт) — явная ошибка, а не загрузка всего репозитория. Кнопка
+  «Скачать» в `DownloadableModelCard` показывается только для записей с
+  `Support.Verified` (`canInstall`). В Models → Music добавлена
+  `DownloadableModelCard` для `musicgen-small` (ранее карточка существовала,
+  но не использовалась нигде).
 - **Динамические локальные TTS-модели**: новый `SherpaOnnxLocalEngine` +
   каталожное обнаружение в `EngineRegistry`. Любая голосовая запись в
   `GenerationModelCatalog` с реальным HF-репозиторием, чьи файлы установлены,

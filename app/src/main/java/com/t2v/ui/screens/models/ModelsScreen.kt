@@ -167,6 +167,8 @@ fun ModelsScreen(
                     tags = GenerationModelCatalog.tagDocsFor("musicgen-small"),
                     selected = state.selectedMusicModelId == "musicgen-small",
                     enabled = true,
+                    installable = GenerationModelCatalog.entries
+                        .firstOrNull { it.id == "musicgen-small" }?.canInstall == true,
                     state = state,
                     vm = vm,
                     infoRepository = GenerationModelCatalog.repositoryFor("musicgen-small"),
@@ -399,6 +401,7 @@ fun DownloadableModelCard(
     tags: com.t2v.core.model.GenerationModelCatalog.TagDocs?,
     selected: Boolean,
     enabled: Boolean,
+    installable: Boolean = true,
     state: ModelsState,
     vm: ModelsViewModel,
     infoRepository: String? = null,
@@ -471,7 +474,7 @@ fun DownloadableModelCard(
                         Text(if (selected) "Selected" else "Select")
                     }
                 }
-                else -> {
+                installable -> {
                     Button(
                         enabled = enabled,
                         onClick = { vm.downloadModelFromCatalog(catalogId) },

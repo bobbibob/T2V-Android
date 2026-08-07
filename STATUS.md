@@ -30,9 +30,13 @@
 - Авто-открытие AudioEditor при наличии тегов (уже было в GenerationScreen)
 - MusicGenOnnxGenerator зарегистрирован (каркас: манифест, каталог, registry)
 - Скачивание моделей из каталога стало универсальным: `downloadModelFromCatalog()`
-  качает любую запись с реальным HF-репозиторием (LiteRT-бандлы целыми); Kokoro
-  остался особым случаем. Добавлена поддержка `.tflite`-файлов.
+  качает любую запись с реальным HF-репозиторием; Kokoro остался особым случаем.
+  Добавлена поддержка `.tflite`-файлов.
 - UI-карточка `musicgen-small` (DownloadableModelCard) в Models → Music.
+- **Кнопка «Скачать» у `musicgen-small` скрыта** (`Support.RuntimeInDevelopment`):
+  публичного tflite-экспорта нет, репозиторий `wide-video/...` только ONNX —
+  `HuggingFaceRepository.install` качает только `.tflite` файлы и отклоняет репо
+  без них (вместо загрузки всего репозитория на ~15 ГБ).
 - Динамические локальные TTS: `SherpaOnnxLocalEngine` + каталожное обнаружение
   установленных sherpa-onnx моделей в `EngineRegistry` — новая модель = запись в
   каталоге + репозиторий, без нового кода-адаптера.
@@ -67,7 +71,7 @@
 | — | Фикс Kokoro зависания | ✅ Сделано | `splitLongText()` режет текст на предложения ≤1200 символов |
 | — | Фикс `AudioTagInserter.positionFitFor` | ✅ Сделано | `insert()` после цикла voice-сегментов |
 | — | Авто-открытие AudioEditor | ✅ Сделано | UI в `GenerationScreen` |
-| 1 | MusicGen через ONNX | 🚧 Каркас + скачивание | Каталог, манифест, UI-карточка; скачивание через HF. Остался ARM64 smoke-test |
+| 1 | MusicGen через ONNX | 🚧 Каркас (без скачивания) | Каталог, манифест, UI-карточка; кнопка скрыта до реального tflite-экспорта. Остался tflite-экспорт + ARM64 smoke-test |
 | — | Динамические локальные TTS-модели | ✅ Сделано | `SherpaOnnxLocalEngine` + каталожное обнаружение в `EngineRegistry` |
 | 2 | sherpa-onnx клонирование | 📋 Очередь | sherpa-onnx runtime подключён, нужна модель + UI |
 
