@@ -24,7 +24,6 @@
     <string name="review_title">जनरेशन समीक्षा</string>
     <string name="settings_general">सामान्य</string>
     <string name="settings_engines">TTS इंजन</string>
-    <string name="settings_remote_host">रिमोट होस्ट</string>
     <string name="settings_about">के बारे में</string>
     <string name="status_idle">निष्क्रिय</string>
     <string name="status_generating">%2$d में से %1$d सेगमेंट जनरेट हो रहा है</string>

@@ -24,7 +24,6 @@
     <string name="review_title">Revisione generazione</string>
     <string name="settings_general">Generale</string>
     <string name="settings_engines">Motori TTS</string>
-    <string name="settings_remote_host">Host remoto</string>
     <string name="settings_about">Informazioni</string>
     <string name="status_idle">Inattivo</string>
     <string name="status_generating">Generazione segmento %1$d di %2$d</string>

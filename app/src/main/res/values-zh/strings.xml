@@ -24,7 +24,6 @@
     <string name="review_title">生成审核</string>
     <string name="settings_general">常规</string>
     <string name="settings_engines">TTS 引擎</string>
-    <string name="settings_remote_host">远程主机</string>
     <string name="settings_about">关于</string>
     <string name="status_idle">空闲</string>
     <string name="status_generating">正在生成第 %2$d 段中的第 %1$d 段</string>

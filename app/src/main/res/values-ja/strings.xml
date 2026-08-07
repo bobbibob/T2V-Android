@@ -24,7 +24,6 @@
     <string name="review_title">生成レビュー</string>
     <string name="settings_general">一般</string>
     <string name="settings_engines">TTS エンジン</string>
-    <string name="settings_remote_host">リモートホスト</string>
     <string name="settings_about">について</string>
     <string name="status_idle">アイドル</string>
     <string name="status_generating">セグメント %2$d 中 %1$d を生成中</string>

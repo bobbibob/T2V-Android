@@ -24,7 +24,6 @@
     <string name="review_title">Generierungs-Review</string>
     <string name="settings_general">Allgemein</string>
     <string name="settings_engines">TTS-Engines</string>
-    <string name="settings_remote_host">Remote-Host</string>
     <string name="settings_about">Über</string>
     <string name="status_idle">Bereit</string>
     <string name="status_generating">Segment %1$d von %2$d wird generiert</string>

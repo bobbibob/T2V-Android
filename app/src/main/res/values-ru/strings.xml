@@ -34,7 +34,6 @@
     <string name="review_title">Обзор генерации</string>
     <string name="settings_general">Общие</string>
     <string name="settings_engines">TTS-движки</string>
-    <string name="settings_remote_host">Удалённый хост</string>
     <string name="settings_about">О приложении</string>
     <string name="status_idle">Готов</string>
     <string name="status_generating">Генерация сегмента %1$d из %2$d</string>
