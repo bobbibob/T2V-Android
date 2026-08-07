@@ -104,8 +104,9 @@
   → **Устройственный тест (S20, arm64)**: ✅ загрузка UK-UA (38.6 MB),
   файлы + манифест в `files/models/<sha256(repo)>`, движок распознан
   («Голоса» → `vits-piper-uk-ua` → Lada · Selected), настройки
-  `tts_engine/voice_id/language` записаны. WAV-синтез с главного экрана
-  не запустился (генерация требует проект/папку — вне scope голосов).
+  `tts_engine/voice_id/language` записаны. ✅ **WAV-синтез**: текст →
+  GenerationScreen → `files/audiobooks/1/seg_00000.wav` + `audiobook.wav`
+  (16 kHz, mono, 16-bit). Полный цикл работает.
 - **NSynth wavenet** (Magenta, SFX) — `RuntimeInDevelopment`, refuses to run
   пока `LiteRtModelInstaller.markSmokeTested()` не вызван после ARM64 smoke-test.
 - **Stable Audio Open Small** (music) и **Stable Audio Clip** (sound) —
