@@ -150,3 +150,51 @@ jobs:
         with:
           name: build-logs
           path: app/build/outputs/logs/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Download verified FFmpeg executable
+        uses: actions/download-artifact@v4
+        with:
+          name: ffmpeg-android-arm64
+          path: app/src/main/jniLibs/arm64-v8a
+      - name: Download sherpa-onnx Android runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: sherpa-onnx-android-arm64
+          path: app/src/main/jniLibs/arm64-v8a
+      - name: Restore release signing keystore
+        run: |
+          mkdir -p ~/.android
+          echo "${{ secrets.ANDROID_RELEASE_KEYSTORE_B64 }}" | base64 --decode > ~/.android/t2v-release.jks
+          test -s ~/.android/t2v-release.jks
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - name: Write signing properties
+        run: |
+          printf 'releaseStoreFile=%s\nreleaseStorePassword=%s\nreleaseKeyAlias=%s\nreleaseKeyPassword=%s\n' \
+            "$HOME/.android/t2v-release.jks" \
+            "${{ secrets.ANDROID_RELEASE_STORE_PASS }}" \
+            "${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}" \
+            "${{ secrets.ANDROID_RELEASE_KEY_PASS }}" \
+            >> local.properties
+      - name: Build release APK and AAB
+        run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --stacktrace
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: app/build/outputs/apk/release/app-release.apk
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab

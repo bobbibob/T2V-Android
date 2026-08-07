@@ -24,12 +24,24 @@ android {
         resourceConfigurations += listOf("en", "ru", "es", "fr", "de", "it", "pt", "zh", "ja", "hi", "ar")
     }
 
+    val keystorePath = providers.gradleProperty("releaseStoreFile")
+        .orNull ?: "${System.getProperty("user.home")}/.android/t2v-release.jks"
+    val hasReleaseSigning = file(keystorePath).exists()
+
     signingConfigs {
         getByName("debug") {
             storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
+        }
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = providers.gradleProperty("releaseStorePassword").getOrElse("t2v_release_pass")
+                keyAlias = providers.gradleProperty("releaseKeyAlias").getOrElse("t2v")
+                keyPassword = providers.gradleProperty("releaseKeyPassword").getOrElse("t2v_release_pass")
+            }
         }
     }
 
@@ -43,6 +55,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

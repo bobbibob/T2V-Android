@@ -4,7 +4,50 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- soft outer glow -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,30 C44,30 36,38 36,48 L36,60 C36,70 44,78 54,78 C64,78 72,70 72,60 L72,48 C72,38 64,30 54,30 z M48,42 L60,42 L60,52 L48,52 z M48,58 L60,58 L60,68 L48,68 z" />
+        android:pathData="M30,66 A24,24 0 1 0 78,66 A24,24 0 1 0 30,66 Z"
+        android:fillColor="#1422D3EE" />
+
+    <!-- source dot (the point where voice starts) -->
+    <path
+        android:pathData="M50,70 A4,4 0 1 0 58,70 A4,4 0 1 0 50,70 Z"
+        android:fillColor="#FFFF5DE8" />
+    <path
+        android:pathData="M50,70 A4,4 0 1 0 58,70 A4,4 0 1 0 50,70 Z"
+        android:fillColor="#FFE040FB" />
+
+    <!-- radiating sound arcs forming a V (voice) -->
+    <path
+        android:pathData="M36,66 C48,64 52,52 54,44 C56,52 60,64 72,66"
+        android:strokeColor="#FF22D3EE"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M30,74 C42,70 50,56 54,52 C58,56 66,70 78,74"
+        android:strokeColor="#FF5FFFF0"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- bottom of the V -->
+    <path
+        android:pathData="M42,78 C50,74 58,74 66,78"
+        android:strokeColor="#FFFF5DEA"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- sparkle accents -->
+    <path
+        android:pathData="M26,30 L28,33 L31,35 L28,37 L26,40 L24,37 L21,35 L24,33 Z"
+        android:fillColor="#FF22D3EE" />
+    <path
+        android:pathData="M80,24 L82,27 L85,29 L82,31 L80,34 L78,31 L75,29 L78,27 Z"
+        android:fillColor="#FFFF5DEA" />
+    <path
+        android:pathData="M30,84 L31,86 L33,87 L31,88 L30,90 L29,88 L27,87 L29,86 Z"
+        android:fillColor="#FF8FFFF0" />
 </vector>
