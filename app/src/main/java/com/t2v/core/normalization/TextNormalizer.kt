@@ -37,6 +37,7 @@ class TextNormalizer(
 
     fun normalize(input: String): String {
         if (!rules.enabled || input.isEmpty()) return input
+        placeholders.clear()
         var s = input
         if (rules.times) s = normalizeTimes(s)
         if (rules.currencies) s = normalizeCurrencies(s)
@@ -47,7 +48,7 @@ class TextNormalizer(
         if (rules.ordinals) s = normalizeOrdinals(s)
         if (rules.numbers) s = normalizeNumbers(s)
         s = applyCustomDictionary(s)
-        return s
+        return restorePlaceholders(s)
     }
 
     // --- правила -----------------------------------------------------------
@@ -55,9 +56,9 @@ class TextNormalizer(
     private val timeRegex = Regex("""\b(\d{1,2}):(\d{2})\b""")
     private fun normalizeTimes(s: String): String =
         timeRegex.replace(s) { m ->
-            val hh = m.groupValues[1].toIntOrNull() ?: return@replace m.value
-            val mi = m.groupValues[2].toIntOrNull() ?: return@replace m.value
-            if (hh > 23 || mi > 59) m.value
+            val hh = m.groupValues[1].toIntOrNull() ?: return@replace protect(m.value)
+            val mi = m.groupValues[2].toIntOrNull() ?: return@replace protect(m.value)
+            if (hh > 23 || mi > 59) protect(m.value)
             else clockWords(hh, mi)
         }
 
@@ -66,7 +67,11 @@ class TextNormalizer(
         val hWord = num2words.numberToWords(hour.toDouble())
         val mWord = num2words.numberToWords(minute.toDouble())
         return when (locale.language) {
-            "ru" -> if (minute == 0) "$hWord часов" else "$hWord $mWord"
+            "ru" -> when {
+                minute == 0 -> "$hWord часов"
+                minute < 10 -> "$hWord ноль $mWord"
+                else -> "$hWord $mWord"
+            }
             else -> when {
                 minute == 0 -> "$hWord o'clock"
                 minute < 10 -> "$hWord oh $mWord"
@@ -206,6 +211,32 @@ class TextNormalizer(
             out = out.replace(Regex("(?i)\\b" + Regex.escape(k) + "\\b"), v)
         }
         return out
+    }
+
+    // Shields rejected clock times from later numeric rules so they stay verbatim.
+    private val placeholders = mutableMapOf<String, String>()
+    private var placeholderIndex = 0
+
+    private fun protect(raw: String): String {
+        val token = "\uE000" + toLetters(placeholderIndex++) + "\uE001"
+        placeholders[token] = raw
+        return token
+    }
+
+    private fun restorePlaceholders(s: String): String {
+        var out = s
+        for ((token, raw) in placeholders) out = out.replace(token, raw)
+        return out
+    }
+
+    private fun toLetters(n: Int): String {
+        var v = n
+        val sb = StringBuilder()
+        do {
+            sb.append(('A'.code + (v % 26)).toChar())
+            v /= 26
+        } while (v > 0)
+        return sb.toString()
     }
 
     private fun monthNameOrNull(m: Int): String? = when (m) {

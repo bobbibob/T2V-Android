@@ -155,7 +155,8 @@ object ProceduralAudioSynth {
                 synthApplause(totalSamples, rng)
             lower.contains("whisper") || lower.contains("breath") || lower.contains("shush") || lower.contains("hush") ->
                 synthWhisper(totalSamples, rng)
-            lower.contains("glass") || lower.contains("shards") || lower.contains("smash") ->
+            lower.contains("glass") || lower.contains("jar") || lower.contains("shards") ||
+                lower.contains("smash") || lower.contains("shatter") ->
                 synthGlass(totalSamples, rng)
             lower.contains("explosion") || lower.contains("boom") || lower.contains("blast") ->
                 synthExplosion(totalSamples, rng)
@@ -477,7 +478,7 @@ object ProceduralAudioSynth {
     }
 
     private fun applyReverb(out: FloatArray, seconds: Double, mix: Double) {
-        val delayMs = (seconds * 250).toInt().coerceIn(50, 800)
+        val delayMs = (seconds * 250).toInt().coerceIn(50, 2000)
         val delaySamples = delayMs * SAMPLE_RATE / 1000
         if (delaySamples >= out.size) return
         val wet = FloatArray(out.size)
