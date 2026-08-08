@@ -49,6 +49,7 @@ object AutoTtsDetector {
             Script.HANGUL -> return VoiceHint("ko-KR", 0.95)
             Script.DEVANAGARI -> return VoiceHint("hi-IN", 0.95)
             Script.BENGALI -> return VoiceHint("bn-IN", 0.95)
+            Script.LATIN, Script.OTHER -> Unit
         }
 
         // --- Latin text: rank by function-word frequency. ---
