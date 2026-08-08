@@ -5,6 +5,14 @@
 ## [Unreleased] - 2026-08-07
 
 ### Added
+- **Процедурный синтез: расширенные эффекты и настроения**
+  (`ProceduralAudioSynth`). Новые SFX-семейства: лазер/blaster, сирена/будильник,
+  вода/splash, гром/шторм, аплодисменты/толпа, шёпот/дыхание, стекло/осколки.
+  Новые музыкальные настроения: mysterious/mystic, peaceful/serene/meditation,
+  suspense, romantic/love, energetic/powerful/epic, jazzy/jazz/swing, warm/cozy.
+  Всё работает без скачивания и без модели; расширены JVM-тесты
+  (все семьи слышимы, алиасы диспетчеризуются на те же семейства,
+  разные настроения дают разный аудио-материал, детерминизм по seed).
 - **Yandex SpeechKit TTS engine** (`YandexTtsEngine`): облачный голос
   Yandex через REST v1 (`texttospeech.googleapis.com`-аналог, endpoint
   `tts.api.cloud.yandex.net/speech/v1/tts:synthesize`). Настройки: API-ключ

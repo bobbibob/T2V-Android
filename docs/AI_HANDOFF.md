@@ -115,7 +115,12 @@
   `EngineRegistry`, покрыт `RegistrySmokeTest`. **Проверить на устройстве**:
   сгенерировать WAV (формат `lpcm`, обёрнут в WAV локально).
 - **Stable Audio Open Small** (music) и **Stable Audio Clip** (sound) —
-  процедурный DSP, не AI; `RuntimeInDevelopment` в каталоге.
+  не модели, а **процедурный DSP** (`ProceduralAudioSynth`), всегда доступны
+  (Verified в каталоге, скачивать нечего). SFX: door, whoosh, notif, rain,
+  wind, explosion, click, footstep, heartbeat, laser, alarm, water, thunder,
+  applause, whisper, glass. Music: ambient, calm, dark, uplifting, sad,
+  tension, dreamy, mysterious, peaceful, suspense, romantic, energetic,
+  jazzy, warm (и алиасы).
 - **PocketTTS**, **ZipVoice** (zero-shot voice cloning) — `Experimental` /
   `RuntimeInDevelopment`; нужна локальная модель под Android.
 

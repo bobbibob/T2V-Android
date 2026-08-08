@@ -36,7 +36,10 @@ class ProceduralAudioSynthTest {
 
     @Test
     fun `sound synth handles all keyword families`() {
-        val prompts = listOf("door", "whoosh", "notification", "rain", "wind", "explosion", "click", "footstep", "heartbeat")
+        val prompts = listOf(
+            "door", "whoosh", "notification", "rain", "wind", "explosion", "click", "footstep",
+            "heartbeat", "laser", "alarm", "water", "thunder", "applause", "whisper", "glass",
+        )
         for (prompt in prompts) {
             val pcm = ProceduralAudioSynth.synthSound(prompt, 1, seed = 42L)
             assertEquals(ProceduralAudioSynth.SAMPLE_RATE, pcm.size)
@@ -46,11 +49,63 @@ class ProceduralAudioSynthTest {
     }
 
     @Test
+    fun `sound synth aliases dispatch to the same families`() {
+        val aliases = mapOf(
+            "blaster fire" to "laser",
+            "siren in the distance" to "alarm",
+            "splash in a pool" to "water",
+            "rapid clap crowd" to "applause",
+            "break a jar" to "glass",
+        )
+        for ((alias, family) in aliases) {
+            val byAlias = ProceduralAudioSynth.synthSound(alias, 1, seed = 7L)
+            val byFamily = ProceduralAudioSynth.synthSound(family, 1, seed = 7L)
+            assertTrue(
+                "Alias '$alias' should match family '$family'",
+                byAlias.contentEquals(byFamily),
+            )
+        }
+    }
+
+    @Test
+    fun `music synth responds to distinct moods`() {
+        val moods = listOf(
+            "ambient", "dark", "uplifting", "sad", "tension", "dreamy",
+            "mysterious", "peaceful", "romantic", "energetic", "jazzy", "warm",
+        )
+        for (mood in moods) {
+            val pcm = ProceduralAudioSynth.synthMusic(mood, 2, seed = 11L)
+            assertEquals(2 * ProceduralAudioSynth.SAMPLE_RATE, pcm.size)
+            assertTrue("Mood $mood should be audible", pcm.maxOf { kotlin.math.abs(it.toInt()) } > 500)
+        }
+        // Different moods (same seed) must not collapse onto identical audio.
+        for (i in moods.indices) {
+            for (j in i + 1 until moods.size) {
+                val a = ProceduralAudioSynth.synthMusic(moods[i], 2, seed = 11L)
+                val b = ProceduralAudioSynth.synthMusic(moods[j], 2, seed = 11L)
+                assertTrue(
+                    "Moods ${moods[i]} and ${moods[j]} must not produce identical audio",
+                    !a.contentEquals(b),
+                )
+            }
+        }
+    }
+
+    @Test
     fun `sound synth falls back for unknown prompts`() {
         val pcm = ProceduralAudioSynth.synthSound("something completely unknown", 1, seed = 42L)
         assertEquals(ProceduralAudioSynth.SAMPLE_RATE, pcm.size)
         val nonZero = pcm.count { it != 0.toShort() }
         assertTrue("Unknown prompt should still produce audio", nonZero > 100)
+    }
+
+    @Test
+    fun `sound synth is deterministic with same seed`() {
+        val a = ProceduralAudioSynth.synthSound("laser", 1, seed = 123L)
+        val b = ProceduralAudioSynth.synthSound("laser", 1, seed = 123L)
+        assertTrue("Same seed should produce identical output", a.contentEquals(b))
+        val c = ProceduralAudioSynth.synthSound("laser", 1, seed = 124L)
+        assertTrue("Different seed should differ", !a.contentEquals(c))
     }
 
     @Test

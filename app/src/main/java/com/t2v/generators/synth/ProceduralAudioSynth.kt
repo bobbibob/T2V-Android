@@ -15,8 +15,9 @@ import kotlin.random.Random
  * Music: parses mood keywords → picks a key + chord progression → synthesises
  *   pad / arpeggio / drone with simple oscillators and a delay-line reverb.
  * Sound: parses the prompt for an effect family (door, whoosh, notification,
- *   rain, wind, impact, beep, explosion) → generates the matching waveform
- *   from filtered noise, oscillators and amplitude envelopes.
+ *   rain, wind, impact, beep, explosion, laser, alarm, water, thunder,
+ *   applause, whisper, glass) → generates the matching waveform from
+ *   filtered noise, oscillators and amplitude envelopes.
  *
  * Output: mono 16-bit PCM at 22050 Hz.
  */
@@ -37,8 +38,24 @@ object ProceduralAudioSynth {
         "happy"    to Key(0,  Scale.MAJOR,    73.0,  0.55, 2.0),
         "sad"      to Key(5,  Scale.MINOR,    49.0,  0.4, 5.0),
         "tension"  to Key(7,  Scale.HARMONIC_MINOR, 55.0, 0.6, 4.0),
+        "suspense" to Key(9,  Scale.MINOR,    49.0,  0.55, 4.0),
         "dream"    to Key(4,  Scale.MAJOR,    55.0,  0.3, 5.0),
         "dreamy"   to Key(4,  Scale.MAJOR,    55.0,  0.3, 5.0),
+        "mysterious" to Key(3, Scale.HARMONIC_MINOR, 49.0, 0.5, 5.0),
+        "mystic"   to Key(3,  Scale.HARMONIC_MINOR, 49.0, 0.5, 5.0),
+        "peaceful" to Key(0,  Scale.MAJOR,    55.0,  0.3, 5.0),
+        "serene"   to Key(0,  Scale.MAJOR,    55.0,  0.3, 5.0),
+        "meditation" to Key(0, Scale.MAJOR,   55.0,  0.25, 6.0),
+        "romantic" to Key(0,  Scale.MAJOR,    61.0,  0.45, 4.0),
+        "love"     to Key(0,  Scale.MAJOR,    61.0,  0.45, 4.0),
+        "energetic" to Key(0, Scale.MAJOR,    82.0,  0.6, 2.0),
+        "powerful" to Key(0,  Scale.MAJOR,    82.0,  0.6, 2.0),
+        "epic"     to Key(0,  Scale.MAJOR,    82.0,  0.6, 2.0),
+        "jazzy"    to Key(2,  Scale.MAJOR,    69.0,  0.55, 2.0),
+        "jazz"     to Key(2,  Scale.MAJOR,    69.0,  0.55, 2.0),
+        "swing"    to Key(2,  Scale.MAJOR,    69.0,  0.55, 2.0),
+        "warm"     to Key(0,  Scale.MAJOR,    61.0,  0.35, 3.0),
+        "cozy"     to Key(0,  Scale.MAJOR,    61.0,  0.35, 3.0),
     )
 
     private data class Key(
@@ -116,16 +133,30 @@ object ProceduralAudioSynth {
         val rng = Random(seed)
 
         return when {
+            lower.contains("laser") || lower.contains("blaster") || lower.contains("pew") || lower.contains("zap") ->
+                synthLaser(totalSamples, rng)
+            lower.contains("alarm") || lower.contains("siren") || lower.contains("klaxon") ->
+                synthAlarm(totalSamples, rng)
             lower.contains("door") || lower.contains("slam") || lower.contains("close") ->
                 synthDoor(totalSamples, rng)
             lower.contains("whoosh") || lower.contains("swoosh") || lower.contains("swish") ->
                 synthWhoosh(totalSamples, rng)
             lower.contains("notif") || lower.contains("bell") || lower.contains("chime") || lower.contains("ding") ->
                 synthNotification(totalSamples, rng)
+            lower.contains("water") || lower.contains("splash") || lower.contains("bubble") || lower.contains("drip") ->
+                synthWater(totalSamples, rng)
+            lower.contains("thunder") || lower.contains("storm") ->
+                synthThunder(totalSamples, rng)
             lower.contains("rain") ->
                 synthRain(totalSamples, rng)
             lower.contains("wind") ->
                 synthWind(totalSamples, rng)
+            lower.contains("applause") || lower.contains("crowd") || lower.contains("cheer") || lower.contains("clap") ->
+                synthApplause(totalSamples, rng)
+            lower.contains("whisper") || lower.contains("breath") || lower.contains("shush") || lower.contains("hush") ->
+                synthWhisper(totalSamples, rng)
+            lower.contains("glass") || lower.contains("shards") || lower.contains("smash") ->
+                synthGlass(totalSamples, rng)
             lower.contains("explosion") || lower.contains("boom") || lower.contains("blast") ->
                 synthExplosion(totalSamples, rng)
             lower.contains("click") || lower.contains("tap") || lower.contains("tick") ->
@@ -190,6 +221,124 @@ object ProceduralAudioSynth {
                 }
             }
             out[i] = sample.toFloat()
+        }
+        normalize(out, 0.7)
+        return floatToPcm16(out)
+    }
+
+    private fun synthLaser(n: Int, rng: Random): ShortArray {
+        val out = FloatArray(n)
+        // Downward gliss sweep with a fast-decay "pew" body
+        var phase = 0.0
+        for (i in 0 until n) {
+            val t = i / SAMPLE_RATE.toDouble()
+            val ratio = i / n.toDouble()
+            val freq = 1400.0 - 1150.0 * (ratio * ratio * ratio) // 1400 -> 250 Hz
+            phase += 2 * PI * freq / SAMPLE_RATE
+            val env = Math.pow(1.0 - ratio, 1.5)
+            val body = sin(phase) * env * 0.5
+            val click = (rng.nextDouble() - 0.5) * exp(-t * 60.0) * 0.35
+            out[i] = (body + click).toFloat()
+        }
+        normalize(out, 0.7)
+        return floatToPcm16(out)
+    }
+
+    private fun synthAlarm(n: Int, rng: Random): ShortArray {
+        val out = FloatArray(n)
+        // Alternating two-tone klaxon: ~0.3s each tone, gentle attack per pulse
+        for (i in 0 until n) {
+            val t = i / SAMPLE_RATE.toDouble()
+            val segment = (t / 0.3).toInt() % 2
+            val freq = if (segment == 0) 620.0 else 830.0
+            val localT = t % 0.3
+            val attack = (localT / 0.02).coerceIn(0.0, 1.0)
+            val sustain = exp(-(localT - 0.02).coerceAtLeast(0.0) * 0.4)
+            out[i] = (sin(2 * PI * freq * t) * attack * (0.35 + 0.25 * sustain)).toFloat()
+        }
+        normalize(out, 0.7)
+        return floatToPcm16(out)
+    }
+
+    private fun synthWater(n: Int, rng: Random): ShortArray {
+        val out = FloatArray(n)
+        // Loose filtered noise bed + random droplet pings and splashes
+        var lp1 = 0.0; var lp2 = 0.0
+        for (i in 0 until n) {
+            val t = i / SAMPLE_RATE.toDouble()
+            val white = rng.nextDouble() - 0.5
+            lp1 = 0.94 * lp1 + 0.06 * white
+            lp2 = 0.8 * lp2 + 0.2 * lp1
+            var sample = lp2 * 0.4
+            if (rng.nextInt(900) == 0) {
+                val freq = 700 + rng.nextDouble() * 800
+                val ping = sin(2 * PI * freq * t) * exp(-0.05 * SAMPLE_RATE * rng.nextDouble()) * 0.5
+                sample += ping
+            }
+            out[i] = sample.toFloat()
+        }
+        normalize(out, 0.65)
+        return floatToPcm16(out)
+    }
+
+    private fun synthThunder(n: Int, rng: Random): ShortArray {
+        val out = FloatArray(n)
+        // Sharp crackle first ~0.4s, then a long low brown-noise rumble
+        var brown = 0.0; var lp = 0.0
+        for (i in 0 until n) {
+            val t = i / SAMPLE_RATE.toDouble()
+            val crackle = (rng.nextDouble() - 0.5) * exp(-t * 6.0) * 0.5
+            brown = (brown + (rng.nextDouble() - 0.5) * 0.06).coerceIn(-1.0, 1.0)
+            lp = 0.985 * lp + 0.015 * brown
+            val rumble = lp * exp(-t * 1.2) * 0.7
+            val strike = sin(2 * PI * 40.0 * t) * exp(-t * 2.0) * 0.3
+            out[i] = (crackle + rumble + strike).toFloat()
+        }
+        normalize(out, 0.85)
+        return floatToPcm16(out)
+    }
+
+    private fun synthApplause(n: Int, rng: Random): ShortArray {
+        val out = FloatArray(n)
+        // Clustered short noise bursts: hand-clap texture
+        for (i in 0 until n) {
+            val t = i / SAMPLE_RATE.toDouble()
+            val burst = exp(-((i % (SAMPLE_RATE / 14)) / SAMPLE_RATE.toDouble()) * 220.0)
+            val clusterEnv = 0.5 + 0.5 * sin(2 * PI * 2.1 * t)
+            out[i] = ((rng.nextDouble() - 0.5) * burst * clusterEnv * 0.7).toFloat()
+        }
+        applyLowPass(out, 0.5)
+        normalize(out, 0.6)
+        return floatToPcm16(out)
+    }
+
+    private fun synthWhisper(n: Int, rng: Random): ShortArray {
+        val out = FloatArray(n)
+        // Soft band-passed noise with gentle amplitude movement
+        var lp = 0.0; var prev = 0.0
+        for (i in 0 until n) {
+            val t = i / SAMPLE_RATE.toDouble()
+            val white = rng.nextDouble() - 0.5
+            lp = 0.9 * lp + 0.1 * white
+            val sibilant = (white - prev) * 0.6
+            prev = white
+            val env = 0.6 + 0.4 * sin(2 * PI * 1.4 * t)
+            out[i] = (sibilant * env * 0.5 + lp * env * 0.2).toFloat()
+        }
+        normalize(out, 0.5)
+        return floatToPcm16(out)
+    }
+
+    private fun synthGlass(n: Int, rng: Random): ShortArray {
+        val out = FloatArray(n)
+        // Metallic high-freq shards with fast decay and bright overtones
+        for (i in 0 until n) {
+            val t = i / SAMPLE_RATE.toDouble()
+            val shard = if (rng.nextInt(220) == 0) (rng.nextDouble() - 0.5) * 2.0 else 0.0
+            val freq = 1800.0 + rng.nextDouble() * 3600.0
+            val ring = sin(2 * PI * freq * t) * exp(-t * 9.0) * 0.2
+            val bright = sin(2 * PI * freq * 2.76 * t) * exp(-t * 11.0) * 0.05
+            out[i] = (shard * 0.6 + ring + bright).toFloat()
         }
         normalize(out, 0.7)
         return floatToPcm16(out)
