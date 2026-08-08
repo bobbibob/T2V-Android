@@ -147,6 +147,29 @@ fun ModelsScreen(
             }
 
             if (selectedTab == ModelTab.Music) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            "Музыка уже работает без скачивания",
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            "В редакторе нажмите чип «Музыка» — он вставит <music>...</music>. " +
+                                "Опишите трек по-русски (например: \"тёплый эмбиент-пэд, 80 BPM, без перкуссии, " +
+                                "10 секунд\") и запустите генерацию: звук появится на таймлайне. " +
+                                "Модель скачивать не нужно.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
                 ModelDetailCard(
                     title = "Локальный синтезатор (музыка)",
                     status = "Процедурный синтез • до 11 секунд • ничего скачивать не нужно",
@@ -175,6 +198,9 @@ fun ModelsScreen(
                     enabled = true,
                     installable = GenerationModelCatalog.entries
                         .firstOrNull { it.id == "musicgen-small" }?.canInstall == true,
+                    unavailableNote =
+                        "MusicGen ещё не прошёл ARM64 smoke-тест на устройстве — настоящая " +
+                            "AI-генерация музыки станет доступна только после проверки экспорта.",
                     state = state,
                     vm = vm,
                     infoRepository = GenerationModelCatalog.repositoryFor("musicgen-small"),
@@ -183,7 +209,7 @@ fun ModelsScreen(
                     infoCategoryLabel = infoCategoryLocalLabel,
                     onInfo = {
                         infoTarget = InfoTarget(
-                            title = "MusicGen-small (он-девайс музыка)",
+                            title = "MusicGen-small (on-device music)",
                             tagline = GenerationModelCatalog.tagDocsFor("musicgen-small")?.tagline,
                             tags = GenerationModelCatalog.tagDocsFor("musicgen-small"),
                             runtime = "LiteRT",
@@ -215,6 +241,29 @@ fun ModelsScreen(
             }
 
             if (selectedTab == ModelTab.Sound) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            "Звуки уже работают без скачивания",
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            "В редакторе нажмите чип «Звук» — он вставит <sfx>...</sfx>. " +
+                                "Опишите эффект по-русски (например: \"деревянная дверь закрывается " +
+                                "в тихом коридоре\") и запустите генерацию: звук появится на таймлайне. " +
+                                "Модель скачивать не нужно.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
                 ModelDetailCard(
                     title = "Локальный синтезатор (звуки)",
                     status = "Процедурный синтез • до 5 секунд • ничего скачивать не нужно",
@@ -250,6 +299,36 @@ fun ModelsScreen(
                             repository = "https://api.elevenlabs.io/v1/sound-generation",
                             license = "Условия ElevenLabs",
                             categoryLabel = infoCategoryCloudLabel,
+                        )
+                    },
+                )
+                DownloadableModelCard(
+                    catalogId = "nsynth-wavenet",
+                    title = "Magenta NSynth (он-девайс SFX)",
+                    status = "Короткие инструментальные тона • LiteRT • ~17 МБ • ждёт ARM64 smoke-тест",
+                    tags = GenerationModelCatalog.tagDocsFor("nsynth-wavenet"),
+                    selected = false,
+                    enabled = false,
+                    installable = GenerationModelCatalog.entries
+                        .firstOrNull { it.id == "nsynth-wavenet" }?.canInstall == true,
+                    unavailableNote =
+                        "NSynth ещё не прошёл ARM64 smoke-тест на устройстве — модель не скачивается " +
+                            "и не выбирается, пока не подтверждено время инференса и SHA-256 файлов.",
+                    state = state,
+                    vm = vm,
+                    infoRepository = GenerationModelCatalog.repositoryFor("nsynth-wavenet"),
+                    infoLicense = GenerationModelCatalog.licenseFor("nsynth-wavenet"),
+                    infoRuntime = "LiteRT",
+                    infoCategoryLabel = infoCategoryLocalLabel,
+                    onInfo = {
+                        infoTarget = InfoTarget(
+                            title = "Magenta NSynth (он-девайс SFX)",
+                            tagline = GenerationModelCatalog.tagDocsFor("nsynth-wavenet")?.tagline,
+                            tags = GenerationModelCatalog.tagDocsFor("nsynth-wavenet"),
+                            runtime = "LiteRT",
+                            repository = GenerationModelCatalog.repositoryFor("nsynth-wavenet"),
+                            license = GenerationModelCatalog.licenseFor("nsynth-wavenet"),
+                            categoryLabel = infoCategoryLocalLabel,
                         )
                     },
                 )
@@ -408,6 +487,7 @@ fun DownloadableModelCard(
     selected: Boolean,
     enabled: Boolean,
     installable: Boolean = true,
+    unavailableNote: String? = null,
     state: ModelsState,
     vm: ModelsViewModel,
     infoRepository: String? = null,
@@ -486,6 +566,18 @@ fun DownloadableModelCard(
                         onClick = { vm.downloadModelFromCatalog(catalogId) },
                     ) {
                         Text(stringResource(R.string.models_download_button))
+                    }
+                }
+                else -> {
+                    Button(enabled = false) {
+                        Text("Модель в разработке")
+                    }
+                    unavailableNote?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
                     }
                 }
             }
