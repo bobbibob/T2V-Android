@@ -162,6 +162,25 @@ object GenerationModelCatalog {
         promptHelp = "В текст попадают только теги в квадратных скобках; всё остальное считается речью.",
     )
 
+    private val YANDEX_TAGS = TagDocs(
+        tagline = "Yandex SpeechKit (v1 REST). Облачный голос Yandex; силён в русском. Только чистая речь — выражение передаётся через скорость.",
+        supported = listOf(
+            "{{lang ru-RU|en-US}} - язык синтеза",
+            "{{speed 0.1..3.0}} - множитель скорости",
+            "{{voice \"alena\"|\"filipp\"|...}} - переключение голоса",
+            "{{emotion evil|good|neutral}} - для совместимых голосов",
+        ),
+        ignored = listOf(
+            "{{emotion ...}} иные значения кроме evil/good/neutral - не маппятся",
+            "{{pause ...}} - обрабатывается локально как тишина в WAV",
+        ),
+        examples = listOf(
+            "{{voice \"alena\"}}Привет! Это я.",
+            "{{lang en-US}}The quick brown fox.",
+        ),
+        promptHelp = "Нужны API-ключ и Folder ID из Yandex Cloud (SpeechKit).",
+    )
+
     private val GEMINI_TAGS = TagDocs(
         tagline = "Gemini TTS получает выразительную разметку как промпт-указание на естественном языке. Модель интерпретирует его свободно.",
         supported = listOf(
@@ -785,6 +804,7 @@ object GenerationModelCatalog {
         "elevenlabs" to ELEVEN_TAGS,
         "gemini" to GEMINI_TAGS,
         "azure" to AZURE_TAGS,
+        "yandex" to YANDEX_TAGS,
         "custom_http" to CUSTOM_HTTP_TAGS,
         "kokoro" to KOKORO_TAGS,
         "piper_ru" to PIPER_TAGS,

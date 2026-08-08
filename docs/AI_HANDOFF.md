@@ -109,6 +109,11 @@
   (16 kHz, mono, 16-bit). Полный цикл работает.
 - **NSynth wavenet** (Magenta, SFX) — `RuntimeInDevelopment`, refuses to run
   пока `LiteRtModelInstaller.markSmokeTested()` не вызван после ARM64 smoke-test.
+- **Yandex Speech engine** (`YandexTtsEngine`) — новый облачный движок:
+  `tts.api.cloud.yandex.net/speech/v1/tts:synthesize`, авторизация `Api-Key` +
+  `x-folder-id`. Настройки в Settings (API Key / Folder ID), зарегистрирован в
+  `EngineRegistry`, покрыт `RegistrySmokeTest`. **Проверить на устройстве**:
+  сгенерировать WAV (формат `lpcm`, обёрнут в WAV локально).
 - **Stable Audio Open Small** (music) и **Stable Audio Clip** (sound) —
   процедурный DSP, не AI; `RuntimeInDevelopment` в каталоге.
 - **PocketTTS**, **ZipVoice** (zero-shot voice cloning) — `Experimental` /

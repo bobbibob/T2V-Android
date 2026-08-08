@@ -59,6 +59,8 @@ class SettingsRepository(private val context: Context) {
         val OPENAI_KEY = stringPreferencesKey("engines.openai.apiKey")
         val ELEVENLABS_KEY = stringPreferencesKey("engines.elevenlabs.apiKey")
         val GEMINI_KEY = stringPreferencesKey("engines.gemini.apiKey")
+        val YANDEX_KEY = stringPreferencesKey("engines.yandex.apiKey")
+        val YANDEX_FOLDER_ID = stringPreferencesKey("engines.yandex.folderId")
         val AZURE_KEY = stringPreferencesKey("engines.azure.subscriptionKey")
         val AZURE_REGION = stringPreferencesKey("engines.azure.region")
         val CUSTOM_URL = stringPreferencesKey("engines.custom_http.url")
@@ -142,6 +144,10 @@ class SettingsRepository(private val context: Context) {
             "openai" to mapOf("apiKey" to (this[Keys.OPENAI_KEY] ?: "")),
             "elevenlabs" to mapOf("apiKey" to (this[Keys.ELEVENLABS_KEY] ?: "")),
             "gemini" to mapOf("apiKey" to (this[Keys.GEMINI_KEY] ?: "")),
+            "yandex" to mapOf(
+                "apiKey" to (this[Keys.YANDEX_KEY] ?: ""),
+                "folderId" to (this[Keys.YANDEX_FOLDER_ID] ?: ""),
+            ),
             "azure" to mapOf(
                 "subscriptionKey" to (this[Keys.AZURE_KEY] ?: ""),
                 "region" to (this[Keys.AZURE_REGION] ?: ""),

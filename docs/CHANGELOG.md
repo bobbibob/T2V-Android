@@ -5,6 +5,13 @@
 ## [Unreleased] - 2026-08-07
 
 ### Added
+- **Yandex SpeechKit TTS engine** (`YandexTtsEngine`): облачный голос
+  Yandex через REST v1 (`texttospeech.googleapis.com`-аналог, endpoint
+  `tts.api.cloud.yandex.net/speech/v1/tts:synthesize`). Настройки: API-ключ
+  и Folder ID (Settings → Yandex). Поддерживает `{{lang}}`, `{{speed}}`,
+  `{{voice}}` (alena/filipp/...), `{{emotion}}` для совместимых голосов.
+  Зарегистрирован в `EngineRegistry`, TagDocs в каталоге, покрыт
+  `RegistrySmokeTest`.
 - **MusicGen-small через LiteRT** (`MusicGenOnnxGenerator`): зарегистрирован
   манифест трёхступенчатого пайплайна (`text_encoder.tflite` / `lm.tflite` /
   `audio_decoder.tflite`), каталог-запись `musicgen-small` (

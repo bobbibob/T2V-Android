@@ -104,6 +104,13 @@ fun SettingsScreen(
             PasswordField("OpenAI API Key", state.settings.engines["openai"]?.get("apiKey").orEmpty()) { v -> vm.setApiKey("openai", v) }
             PasswordField("ElevenLabs API Key", state.settings.engines["elevenlabs"]?.get("apiKey").orEmpty()) { v -> vm.setApiKey("elevenlabs", v) }
             PasswordField("Gemini API Key", state.settings.engines["gemini"]?.get("apiKey").orEmpty()) { v -> vm.setApiKey("gemini", v) }
+            PasswordField("Yandex API Key", state.settings.engines["yandex"]?.get("apiKey").orEmpty()) { v -> vm.setApiKey("yandex", v) }
+            OutlinedTextField(
+                value = state.settings.engines["yandex"]?.get("folderId").orEmpty(),
+                onValueChange = { vm.setApiKey("yandex", it, "folderId") },
+                label = { Text("Yandex Folder ID") },
+                modifier = Modifier.fillMaxWidth(),
+            )
             PasswordField("Azure Subscription Key", state.settings.engines["azure"]?.get("subscriptionKey").orEmpty()) { v -> vm.setApiKey("azure", v) }
             PasswordField("Hugging Face Token (optional)", state.settings.engines["huggingface"]?.get("token").orEmpty()) { v ->
                 vm.setApiKey("huggingface", v, "token")
@@ -206,6 +213,8 @@ class SettingsViewModel(private val context: android.content.Context) : ViewMode
                 "openai" -> it[SettingsRepository.Keys.OPENAI_KEY] = v
                 "elevenlabs" -> it[SettingsRepository.Keys.ELEVENLABS_KEY] = v
                 "gemini" -> it[SettingsRepository.Keys.GEMINI_KEY] = v
+                "yandex" -> if (field == "folderId") it[SettingsRepository.Keys.YANDEX_FOLDER_ID] = v
+                else it[SettingsRepository.Keys.YANDEX_KEY] = v
                 "azure" -> if (field == "region") it[SettingsRepository.Keys.AZURE_REGION] = v
                 else it[SettingsRepository.Keys.AZURE_KEY] = v
                 "huggingface" -> it[SettingsRepository.Keys.HUGGING_FACE_TOKEN] = v

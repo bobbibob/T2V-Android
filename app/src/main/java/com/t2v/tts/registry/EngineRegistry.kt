@@ -15,6 +15,7 @@ import com.t2v.tts.engines.OpenAiTtsEngine
 import com.t2v.tts.engines.PiperRussianTtsEngine
 import com.t2v.tts.engines.SherpaOnnxLocalEngine
 import com.t2v.tts.engines.TtsEngine
+import com.t2v.tts.engines.YandexTtsEngine
 import java.io.File
 import java.security.MessageDigest
 
@@ -55,6 +56,7 @@ class EngineRegistry(
         add(ElevenLabsTtsEngine.ENGINE_INFO)
         add(GeminiTtsEngine.ENGINE_INFO)
         add(AzureTtsEngine.ENGINE_INFO)
+        add(YandexTtsEngine.ENGINE_INFO)
         add(CustomHttpTtsEngine.ENGINE_INFO)
 
         // Data-driven local TTS models: any catalog voice entry whose repository
@@ -138,6 +140,11 @@ class EngineRegistry(
                 subscriptionKey = cfg["subscriptionKey"]?.takeIf { it.isNotBlank() } ?: return null,
                 region = cfg["region"]?.takeIf { it.isNotBlank() } ?: return null,
                 defaultVoice = cfg["voice"] ?: "en-US-JennyNeural",
+            )
+            "yandex" -> YandexTtsEngine(
+                apiKey = cfg["apiKey"]?.takeIf { it.isNotBlank() } ?: return null,
+                folderId = cfg["folderId"]?.takeIf { it.isNotBlank() } ?: return null,
+                defaultVoice = cfg["voice"] ?: "alena",
             )
             "custom_http" -> CustomHttpTtsEngine(
                 CustomHttpTtsEngine.Config(
