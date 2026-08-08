@@ -73,6 +73,16 @@ class Num2WordsTest {
     }
 
     @Test
+    fun `russian ordinals are declined`() {
+        assertEquals("первый", ru.ordinalToWords(1))
+        assertEquals("пятый", ru.ordinalToWords(5))
+        assertEquals("двадцать первый", ru.ordinalToWords(21))
+        assertEquals("сотый", ru.ordinalToWords(100))
+        assertEquals("двести пятьдесят шестой", ru.ordinalToWords(256))
+        assertEquals("нулевой", ru.ordinalToWords(0))
+    }
+
+    @Test
     fun `digitsToWords works`() {
         val out = en.digitsToWords(123)
         assertNotNull(out)

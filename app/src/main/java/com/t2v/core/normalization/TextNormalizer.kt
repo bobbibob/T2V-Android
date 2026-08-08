@@ -24,6 +24,7 @@ data class NormalizationRules(
     val percentages: Boolean = true,
     val measurements: Boolean = true,
     val romanNumerals: Boolean = true,
+    val times: Boolean = true,
 )
 
 class TextNormalizer(
@@ -37,6 +38,7 @@ class TextNormalizer(
     fun normalize(input: String): String {
         if (!rules.enabled || input.isEmpty()) return input
         var s = input
+        if (rules.times) s = normalizeTimes(s)
         if (rules.currencies) s = normalizeCurrencies(s)
         if (rules.percentages) s = normalizePercentages(s)
         if (rules.measurements) s = normalizeMeasurements(s)
@@ -49,6 +51,57 @@ class TextNormalizer(
     }
 
     // --- правила -----------------------------------------------------------
+
+    private val timeRegex = Regex("""\b(\d{1,2}):(\d{2})\b""")
+    private fun normalizeTimes(s: String): String =
+        timeRegex.replace(s) { m ->
+            val hh = m.groupValues[1].toIntOrNull() ?: return@replace m.value
+            val mi = m.groupValues[2].toIntOrNull() ?: return@replace m.value
+            if (hh > 23 || mi > 59) m.value
+            else clockWords(hh, mi)
+        }
+
+    /** Reads a digital clock aloud, localized to the active numeric locale. */
+    private fun clockWords(hour: Int, minute: Int): String {
+        val hWord = num2words.numberToWords(hour.toDouble())
+        val mWord = num2words.numberToWords(minute.toDouble())
+        return when (locale.language) {
+            "ru" -> if (minute == 0) "$hWord часов" else "$hWord $mWord"
+            else -> when {
+                minute == 0 -> "$hWord o'clock"
+                minute < 10 -> "$hWord oh $mWord"
+                else -> "$hWord $mWord"
+            }
+        }
+    }
+
+    // Русские порядковые формы вида «N-й/-я/-е/-го/-му/-м/-х».
+    private val ruOrdinalSuffixRegex = Regex("""\b(\d{1,3})-([а-яё]{1,2})\b""", RegexOption.IGNORE_CASE)
+    private fun normalizeRussianOrdinals(s: String): String =
+        ruOrdinalSuffixRegex.replace(s) { m ->
+            val num = m.groupValues[1].toIntOrNull() ?: return@replace m.value
+            val suffix = m.groupValues[2].lowercase()
+            if (num < 1 || num >= 1000) return@replace m.value
+            if (suffix !in RU_ORDINAL_SUFFIXES) return@replace m.value
+            declineRuOrdinal(num2words.ordinalToWords(num), suffix)
+        }
+
+    private fun declineRuOrdinal(word: String, suffix: String): String = when (suffix) {
+        "й" -> word
+        "я" -> ruEnding(word, "ый" to "ая", "ой" to "ая", "ий" to "ья")
+        "е" -> ruEnding(word, "ый" to "ое", "ой" to "ое", "ий" to "ье")
+        "го", "его" -> ruEnding(word, "ый" to "ого", "ой" to "ого", "ий" to "его")
+        "му", "ему" -> ruEnding(word, "ый" to "ому", "ой" to "ому", "ий" to "ему")
+        "м" -> ruEnding(word, "ый" to "ом", "ой" to "ом", "ий" to "ем")
+        "ю" -> ruEnding(word, "ый" to "ую", "ой" to "ую", "ий" to "ью")
+        "х" -> ruEnding(word, "ый" to "ых", "ой" to "ых", "ий" to "их")
+        else -> word
+    }
+
+    private fun ruEnding(word: String, vararg forms: Pair<String, String>): String {
+        for ((from, to) in forms) if (word.endsWith(from)) return word.dropLast(from.length) + to
+        return word
+    }
 
     private val currencyRegexPrefix = Regex("""([\$€£¥₽]|USD|EUR|GBP|RUB|JPY|CNY)\s?(\d{1,9}(?:[.,]\d{1,2})?)""")
     private val currencyRegexSuffix = Regex("""(\d{1,9}(?:[.,]\d{1,2})?)\s?([\$€£¥₽]|USD|EUR|GBP|RUB|JPY|CNY)""")
@@ -118,11 +171,19 @@ class TextNormalizer(
         }
 
     private val ordinalRegex = Regex("""(\d{1,3})(st|nd|rd|th)\b""", RegexOption.IGNORE_CASE)
-    private fun normalizeOrdinals(s: String): String =
-        ordinalRegex.replace(s) { m ->
+    private fun normalizeOrdinals(s: String): String {
+        if (locale.language == "ru") {
+            val afterRu = normalizeRussianOrdinals(s)
+            return ordinalRegex.replace(afterRu) { m ->
+                val v = m.groupValues[1].toIntOrNull() ?: return@replace m.value
+                num2words.ordinalToWords(v)
+            }
+        }
+        return ordinalRegex.replace(s) { m ->
             val v = m.groupValues[1].toIntOrNull() ?: return@replace m.value
             num2words.ordinalToWords(v)
         }
+    }
 
     private val numberRegex = Regex("""\b\d{1,9}(?:[.,]\d{1,2})?\b""")
     private fun normalizeNumbers(s: String): String =
@@ -164,5 +225,9 @@ class TextNormalizer(
             prev = v
         }
         return total
+    }
+
+    companion object {
+        private val RU_ORDINAL_SUFFIXES = setOf("й", "я", "е", "ю", "го", "его", "му", "ему", "м", "х")
     }
 }

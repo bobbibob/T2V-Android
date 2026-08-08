@@ -25,7 +25,7 @@ class Num2Words(private val locale: Locale) {
     fun ordinalToWords(value: Int): String {
         val cardinal = intToWords(value.toLong())
         return when (locale.language) {
-            "ru" -> ordinalRu(cardinal)
+            "ru" -> ordinalRu(value)
             "es" -> cardinal + "º".replace("uno", "primer").replace("una", "primera")
             "fr" -> "$cardinal${if (value == 1) "er" else "e"}"
             "de" -> "$cardinal."
@@ -235,9 +235,32 @@ class Num2Words(private val locale: Locale) {
         "ru" -> "минус"; "es" -> "menos"; "fr" -> "moins"; "de" -> "minus"; else -> "negative"
     }
 
-    private fun ordinalRu(cardinal: String): String {
-        // Крайне упрощённо
-        return cardinal
+    private fun ordinalRu(value: Int): String = when {
+        value == 0 -> "нулевой"
+        value < 0 -> "минус ${ordinalRuPositive(kotlin.math.abs(value))}"
+        else -> ordinalRuPositive(value)
+    }
+
+    /** Русское порядковое (м. род, именительный) для 1..999; ≥1000 — кардинальное зачисление. */
+    private fun ordinalRuPositive(n: Int): String {
+        if (n >= 1000) return intToWordsRu(n.toLong())
+        val hundreds = n / 100
+        val rest = n % 100
+        val restWord = ordinalRuUnderHundred(rest)
+        if (hundreds == 0) return restWord
+        if (rest == 0) return ORD_HUNDREDS_RU[hundreds]
+        return "${CARD_HUNDREDS_RU[hundreds]} $restWord"
+    }
+
+    private fun ordinalRuUnderHundred(rest: Int): String = when {
+        rest == 0 -> ""
+        rest in 1..20 -> ORD_UNITS_RU[rest]
+        else -> {
+            val tens = rest / 10
+            val ones = rest % 10
+            if (ones == 0) ORD_TENS_RU[tens]
+            else "${CARD_TENS_RU[tens]} ${ORD_UNITS_RU[ones]}"
+        }
     }
 
     companion object {
@@ -288,6 +311,30 @@ class Num2Words(private val locale: Locale) {
             "sechzig", "siebzig", "achtzig", "neunzig")
         private val SCALES_DE = listOf(
             "Milliarde" to 1_000_000_000L, "Million" to 1_000_000L, "tausend" to 1_000L,
+        )
+
+        // Русские порядковые (мужской род, именительный падеж) — индексы совпадают с числом.
+        private val ORD_UNITS_RU = arrayOf(
+            "", "первый", "второй", "третий", "четвёртый", "пятый", "шестой", "седьмой",
+            "восьмой", "девятый", "десятый",
+            "одиннадцатый", "двенадцатый", "тринадцатый", "четырнадцатый", "пятнадцатый",
+            "шестнадцатый", "семнадцатый", "восемнадцатый", "девятнадцатый", "двадцатый",
+        )
+        private val ORD_TENS_RU = arrayOf(
+            "", "", "двадцатый", "тридцатый", "сороковой", "пятидесятый", "шестидесятый",
+            "семидесятый", "восьмидесятый", "девяностый",
+        )
+        private val ORD_HUNDREDS_RU = arrayOf(
+            "", "сотый", "двухсотый", "трёхсотый", "четырёхсотый", "пятисотый",
+            "шестисотый", "семисотый", "восьмисотый", "девятисотый",
+        )
+        private val CARD_HUNDREDS_RU = arrayOf(
+            "", "сто", "двести", "триста", "четыреста", "пятьсот",
+            "шестьсот", "семьсот", "восемьсот", "девятьсот",
+        )
+        private val CARD_TENS_RU = arrayOf(
+            "", "", "двадцать", "тридцать", "сорок", "пятьдесят",
+            "шестьдесят", "семьдесят", "восемьдесят", "девяносто",
         )
     }
 }
