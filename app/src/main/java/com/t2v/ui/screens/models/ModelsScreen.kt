@@ -569,7 +569,7 @@ fun DownloadableModelCard(
                     }
                 }
                 else -> {
-                    Button(enabled = false) {
+                    Button(onClick = {}, enabled = false) {
                         Text("Модель в разработке")
                     }
                     unavailableNote?.let {
