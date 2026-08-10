@@ -87,15 +87,17 @@ class GeneratorRegistryTest {
     fun `musicgen manifest declares every required file and caps`() {
         val m = LiteRtModelRuntime.MUSIC_GEN_SMALL
         assertEquals("musicgen-small", m.modelId)
-        assertEquals(3, m.entries.size)
+        assertEquals(4, m.entries.size)
         for (entry in m.entries) {
             assertTrue("Entry ${entry.path} must declare a size", entry.expectedBytes > 0)
             assertEquals(64, entry.sha256.length)
         }
-        // Represents the three-stage encoder/LM/decoder pipeline.
-        assertTrue(m.entries.any { it.path == "text_encoder.tflite" })
-        assertTrue(m.entries.any { it.path == "lm.tflite" })
-        assertTrue(m.entries.any { it.path == "audio_decoder.tflite" })
+        // Represents the text encoder / autoregressive LM / EnCodec decoder
+        // pipeline plus the tokenizer, all matched to the repo files.
+        assertTrue(m.entries.any { it.path == "onnx/text_encoder_int8.onnx" })
+        assertTrue(m.entries.any { it.path == "onnx/decoder_model_merged_int8.onnx" })
+        assertTrue(m.entries.any { it.path == "onnx/encodec_decode_int8.onnx" })
+        assertTrue(m.entries.any { it.path == "tokenizer.json" })
     }
 
     @Test

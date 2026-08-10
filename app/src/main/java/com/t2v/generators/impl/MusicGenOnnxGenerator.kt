@@ -14,7 +14,8 @@ import java.io.File
 import java.util.UUID
 
 /**
- * On-device AI music generator backed by a MusicGen-small LiteRT export.
+ * On-device AI music generator backed by a MusicGen-small ONNX export
+ * (executed through ONNX Runtime; see [LiteRtModelRuntime.MUSIC_GEN_SMALL]).
  *
  * MusicGen is an autoregressive audio-language model: a text encoder maps the
  * prompt to embeddings, a transformer LM autoregressively predicts EnCodec
@@ -66,9 +67,10 @@ class MusicGenOnnxGenerator(
         )
         output.parentFile?.mkdirs()
         // Real inference once tensors are verified:
-        //  1. text_encoder.tflite: prompt -> (1, seq, 768) text embeddings.
-        //  2. lm.tflite: autoregressive Sampling of EnCodec tokens (32 steps).
-        //  3. audio_decoder.tflite: tokens -> (1, 1, 32000) PCM per 1sec.
+        //  1. onnx/text_encoder_int8.onnx: prompt -> (1, seq, 768) text embeddings.
+        //  2. onnx/decoder_model_merged_int8.onnx: autoregressive Sampling of
+        //     EnCodec tokens (32 steps) with cross-attention over the embeddings.
+        //  3. onnx/encodec_decode_int8.onnx: tokens -> (1, 1, 32000) PCM per 1sec.
         AudioEncoder.encodePcm16MonoWav(
             out = output,
             pcm = ShortArray(0),
