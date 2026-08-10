@@ -158,6 +158,11 @@ dependencies {
     val tflite = "2.14.0"
     implementation("org.tensorflow:tensorflow-lite:$tflite")
 
+    // ONNX Runtime for Android — исполняет MusicGen-small ONNX-экспорт
+    // (text_encoder / merged decoder / encodec_decode, int8) прямо на устройстве.
+    // Репозиторий: Maven Central (com.microsoft.onnxruntime).
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.27.0")
+
     // NumPy не нужен: всё, что было на numpy, переписано на ручные массивы.
     // Документы: docx4j нет в Android, используем чистый ZIP-парсер для DOCX.
     implementation("org.apache.commons:commons-compress:1.26.0")

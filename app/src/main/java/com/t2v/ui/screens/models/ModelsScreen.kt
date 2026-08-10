@@ -48,6 +48,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.t2v.generators.runtime.LiteRtModelInstaller
+import com.t2v.generators.runtime.LiteRtModelRuntime
 import com.t2v.R
 import com.t2v.app.AppContainer
 import com.t2v.core.model.GenerationModelCatalog
@@ -1408,7 +1410,7 @@ class ModelsViewModel(private val context: android.content.Context) : ViewModel(
                 val model = repository().model(repo)
                 val variant = model.variants.firstOrNull()
                     ?: return@runCatching error("у модели «${entry.title}» нет файлов, подходящих для Android")
-                repository().install(model, variant) { downloaded, total ->
+                val installed = repository().install(model, variant) { downloaded, total ->
                     val progress = if (total > 0) {
                         (downloaded.toDouble() / total.toDouble()).toFloat().coerceIn(0f, 1f)
                     } else {
@@ -1422,6 +1424,13 @@ class ModelsViewModel(private val context: android.content.Context) : ViewModel(
                         )
                     }
                 }
+                // LiteRT/ORT bundles (MusicGen) download into the Hugging Face
+                // cache, but the runtime reads them from
+                // files/models/litert/<modelId>. Copy the manifest files there
+                // and record their checksums so isInstalled()/isAvailable()
+                // gate can flip after a device smoke-test.
+                bridgeLiteRtInstall(entry, installed.location)
+                installed
             }.onSuccess {
                 _state.update {
                     it.copy(
@@ -1450,6 +1459,49 @@ class ModelsViewModel(private val context: android.content.Context) : ViewModel(
         viewModelScope.launch {
             russianInstaller.delete(voiceId)
             _state.update { it.copy(installedRussianVoices = installedRussianVoiceIds()) }
+        }
+    }
+
+    /**
+     * Copies a downloaded LiteRT/ORT bundle from the Hugging Face cache into
+     * the runtime manifest root (`files/models/litert/<modelId>`) where
+     * [LiteRtModelRuntime.isInstalled] can see it.
+     *
+     * [LiteRtModelInstaller.markInstalled] is deliberately strict: the target
+     * must already exist at the expected byte size and SHA-256 before the
+     * sidecar is written. `install()` downloads verified bytes, so this is a
+     * pure copy that either succeeds fully or throws before any sidecar lands.
+     */
+    private fun bridgeLiteRtInstall(
+        entry: com.t2v.core.model.GenerationModelCatalog.Entry,
+        cacheLocation: String,
+    ) {
+        if (entry.liteRtFiles.isEmpty()) return
+        val manifest = LiteRtModelRuntime.manifestFor(entry.id) ?: return
+        val runtime = LiteRtModelRuntime(context)
+        val installer = LiteRtModelInstaller(runtime)
+        val plan = installer.plan(
+            manifest = manifest,
+            catalog = entry,
+        )
+        val cache = java.io.File(cacheLocation)
+        for (manifestEntry in manifest.entries) {
+            val source = java.io.File(cache, manifestEntry.path)
+            if (!source.isFile) {
+                error(
+                    "Downloaded cache for ${entry.id} is missing " +
+                        "${manifestEntry.path}",
+                )
+            }
+            val target = java.io.File(plan.destinationRoot, manifestEntry.path)
+            target.parentFile?.mkdirs()
+            source.copyTo(target, overwrite = true)
+            installer.markInstalled(
+                plan = plan,
+                filePath = manifestEntry.path,
+                expectedBytes = manifestEntry.expectedBytes,
+                sha256 = manifestEntry.sha256,
+            )
         }
     }
 

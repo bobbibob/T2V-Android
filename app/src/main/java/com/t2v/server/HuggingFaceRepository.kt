@@ -154,15 +154,16 @@ class HuggingFaceRepository(
             "Model ${model.id} is not verified for execution on Android"
         }
         require(variant in model.variants) { "Variant does not belong to ${model.id}" }
-        // LiteRT bundles (e.g. MusicGen) download only their .tflite weight
-        // files: the three-stage encoder/LM/decoder pipeline needs exactly the
-        // files listed in its runtime manifest and nothing else. A repo with
-        // no .tflite files at all (e.g. an ONNX-only export) is an error, not a
-        // silent zero-byte install. Everything else downloads one weight file
-        // plus its support files.
-        val isLiteRtBundle = GenerationModelCatalog.entries.any {
+        // LiteRT bundles (e.g. MusicGen) download only the files listed in
+        // their runtime manifest. A repo which serves ONNX exports — MusicGen
+        // has no .tflite files at all — must download exactly
+        // `liteRtFiles` (three ONNX weights + tokenizer.json) and nothing
+        // else, otherwise a wholesale repository fetch would pull tens of
+        // gigabytes of variants we never load.
+        val liteRtEntry = GenerationModelCatalog.entries.firstOrNull {
             it.repository == model.id &&
-                it.requirements.runtime == GenerationModelCatalog.Runtime.LiteRt
+                it.requirements.runtime == GenerationModelCatalog.Runtime.LiteRt &&
+                it.liteRtFiles.isNotEmpty()
         }
         // VITS/Piper voices ship espeak-ng-data support files without any
         // extension, so the weight+support heuristics would silently drop them.
@@ -176,14 +177,23 @@ class HuggingFaceRepository(
                 it.path != ".gitattributes" &&
                     !it.path.equals("README.md", ignoreCase = true)
             }
-        } else if (isLiteRtBundle) {
-            model.files
-                .filter { it.path.substringAfterLast('.').lowercase() in WEIGHT_EXTENSIONS }
-                .also { selected ->
-                    if (selected.isEmpty()) {
-                        error("Репозиторий ${model.id} не содержит .tflite файлов для LiteRT")
-                    }
+        } else if (liteRtEntry != null) {
+            liteRtEntry.liteRtFiles.mapNotNull { wanted ->
+                model.files.firstOrNull { it.path == wanted }
+            }.also { selected ->
+                val missing = liteRtEntry.liteRtFiles.filter { wanted ->
+                    model.files.none { it.path == wanted }
                 }
+                if (missing.isNotEmpty()) {
+                    error(
+                        "Репозиторий ${model.id} не содержит файлов манифеста LiteRT: " +
+                            missing.joinToString(),
+                    )
+                }
+                if (selected.isEmpty()) {
+                    error("Репозиторий ${model.id} не содержит файлов манифеста LiteRT")
+                }
+            }
         } else {
             buildList {
                 add(variant.weightFile)
@@ -248,7 +258,15 @@ class HuggingFaceRepository(
             // Kokoro and full-repo VITS voices must stay in app-private storage:
             // EngineRegistry locates them by hashing the repository id under
             // filesDir/models. A user-selected folder would hide them from TTS.
-            if (modelsTreeUri.isNotBlank() && model.id != KOKORO_REPOSITORY && !downloadsEverything) {
+            // LiteRT bundles (e.g. MusicGen) also stay in app-private storage:
+            // the runtime manifest root is `filesDir/models/litert/<modelId>` and
+            // copying them to a user-selected document tree would hide them from
+            // the engine, so the UI layer bridges them after install() returns.
+            if (modelsTreeUri.isNotBlank() &&
+                model.id != KOKORO_REPOSITORY &&
+                !downloadsEverything &&
+                liteRtEntry == null
+            ) {
                 val installed = copyToDocumentTree(directory, model.id)
                 directory.deleteRecursively()
                 installed

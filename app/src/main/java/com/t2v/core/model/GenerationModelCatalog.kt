@@ -66,6 +66,15 @@ object GenerationModelCatalog {
          * heuristics). The weight+support branch below is then bypassed.
          */
         val downloadAllFiles: Boolean = false,
+        /**
+         * Exact repository-relative file paths a LiteRT/ORT bundle needs.
+         *
+         * The HuggingFace client installs every file listed here (and nothing
+         * else) so a MusicGen-sized repository — which contains dozens of
+         * variants on disk — does not get downloaded wholesale. Must match
+         * [com.t2v.generators.runtime.LiteRtModelRuntime] manifests entry-for-entry.
+         */
+        val liteRtFiles: List<String> = emptyList(),
     ) {
         val canInstall: Boolean
             get() = support == Support.Verified && approximateDownloadBytes != null
@@ -763,12 +772,19 @@ object GenerationModelCatalog {
             ),
             tags = MUSIC_GEN_TAGS,
             support = Support.RuntimeInDevelopment,
-            approximateDownloadBytes = 422_000_000L,
+            approximateDownloadBytes = 599_023_252L,
             license = "CC-BY-NC 4.0 (MusicGen-small)",
             repository = "wide-video/musicgen-small-v1.0.0",
             revision = null,
-            notes = "Real AI music generation via MusicGen-small LiteRT export. Not selectable until " +
-                "the ARM64 smoke-test confirms inference and SHA-256.",
+            notes = "Real AI music generation via MusicGen-small ONNX export "
+                + "(ONNX Runtime, int8). Not selectable until the ARM64 smoke-test "
+                + "confirms inference and SHA-256.",
+            liteRtFiles = listOf(
+                "onnx/text_encoder_int8.onnx",
+                "onnx/decoder_model_merged_int8.onnx",
+                "onnx/encodec_decode_int8.onnx",
+                "tokenizer.json",
+            ),
         ),
     )
 

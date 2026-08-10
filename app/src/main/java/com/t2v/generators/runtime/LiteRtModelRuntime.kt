@@ -185,36 +185,55 @@ class LiteRtModelRuntime(
         )
 
         /**
-         * MusicGen-small manifest (LiteRT/TFLite export).
+         * MusicGen-small manifest (ONNX export, executed via ONNX Runtime).
          *
-         * This is the AI music generator T2V is wired towards. The real,
-         * verified model weights are hosted on Hugging Face — candidates are
-         * `wide-video/musicgen-small-v1.0.0` (int8, ~422 MB) and
-         * `chinedudave06/musicgen-medium-stereo-onnx` (int8 ~427 MB). The
-         * hashes below are placeholders until a real ARM64 device export is
-         * verified and the install manifest is updated; no file with these
-         * hashes ships in the APK.
+         * The real, verified ONNX weights are hosted on Hugging Face at
+         * `wide-video/musicgen-small-v1.0.0` (int8). The three-stage pipeline is:
+         *
+         *   1. `text_encoder` — prompt tokens -> (1, T, 768) text embeddings.
+         *   2. `decoder_model_merged` — autoregressive EnCodec token LM with
+         *      cross-attention over the text embeddings and a built-in KV cache.
+         *   3. `encodec_decode` — EnCodec code tokens -> PCM waveform frames.
+         *
+         * The `tokenizer.json` is part of the bundle so its SHA-256 is verified
+         * at install time like the three ONNX weights. The sizes and hashes below
+         * were computed from the files actually served by that repository, so a
+         * truncated or corrupted download is detected before the engine runs.
          */
         val MUSIC_GEN_SMALL = BundleManifest(
             modelId = "musicgen-small",
             entries = listOf(
                 ManifestEntry(
-                    path = "text_encoder.tflite",
-                    expectedBytes = 144_000_000,
-                    sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                    path = "onnx/text_encoder_int8.onnx",
+                    expectedBytes = 110_027_935,
+                    sha256 = "77494d927d25ea09e6abc8d566281b5b9cd58f39c5f89a7da60e157b0a711607",
                 ),
                 ManifestEntry(
-                    path = "lm.tflite",
-                    expectedBytes = 258_000_000,
-                    sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                    path = "onnx/decoder_model_merged_int8.onnx",
+                    expectedBytes = 426_777_507,
+                    sha256 = "e0784dfa87ac4cba563c01a081f22841e782bdbe91ce751b5cc955f6c499c4c6",
                 ),
                 ManifestEntry(
-                    path = "audio_decoder.tflite",
-                    expectedBytes = 20_000_000,
-                    sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                    path = "onnx/encodec_decode_int8.onnx",
+                    expectedBytes = 59_796_619,
+                    sha256 = "49bc9dd34b782aa667bbf2d83f25b31ec19db39aadc55a61e4161736c98c99bf",
+                ),
+                ManifestEntry(
+                    path = "tokenizer.json",
+                    expectedBytes = 2_421_191,
+                    sha256 = "a45ba2af379e1d559dbbdf176bb6a338945019534a20e15e07d22bbd0a7544b3",
                 ),
             ),
         )
+
+        /** Returns the manifest for a model id, or null if it has no LiteRT bundle. */
+        fun manifestFor(modelId: String): BundleManifest? = when (modelId) {
+            MUSIC_GEN_SMALL.modelId -> MUSIC_GEN_SMALL
+            NSYNTH_WAVENET.modelId -> NSYNTH_WAVENET
+            STABLE_AUDIO_OPEN_SMALL.modelId -> STABLE_AUDIO_OPEN_SMALL
+            STABLE_AUDIO_CLIP.modelId -> STABLE_AUDIO_CLIP
+            else -> null
+        }
 
         fun catalogEntryFor(modelId: String): GenerationModelCatalog.Entry? =
             GenerationModelCatalog.entries.firstOrNull { it.id == modelId }
