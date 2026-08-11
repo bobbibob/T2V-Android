@@ -22,18 +22,18 @@ class PrecompiledNormalizer(charsmapBase64: String) {
         if (raw.isEmpty()) {
             array = IntArray(0)
             normalized = ""
-            return
+        } else {
+            val buf = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
+            val trieSizeBytes = buf.int
+            val trieEntries = trieSizeBytes / 4
+            array = IntArray(trieEntries)
+            for (i in 0 until trieEntries) {
+                array[i] = buf.int
+            }
+            val normalizedBytes = ByteArray(buf.remaining())
+            buf.get(normalizedBytes)
+            normalized = String(normalizedBytes, Charsets.UTF_8)
         }
-        val buf = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
-        val trieSizeBytes = buf.int
-        val trieEntries = trieSizeBytes / 4
-        array = IntArray(trieEntries)
-        for (i in 0 until trieEntries) {
-            array[i] = buf.int
-        }
-        val normalizedBytes = ByteArray(buf.remaining())
-        buf.get(normalizedBytes)
-        normalized = String(normalizedBytes, Charsets.UTF_8)
     }
 
     /* ---- DoubleArray trait methods ---- */
