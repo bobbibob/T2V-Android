@@ -174,4 +174,25 @@ class MusicGenTokenizerTest {
         assertEquals(listOf(1), result.ids)
         assertEquals(listOf("</s>"), result.tokens)
     }
+
+    @Test
+    fun `unk token string is the raw unknown piece`() {
+        val result = tokenizer("ú")
+        assertEquals(listOf(3, 2, 1), result.ids)
+        assertEquals(listOf("▁", "ú", "</s>"), result.tokens)
+    }
+
+    @Test
+    fun `encodes unicode prompt matching reference golden`() {
+        val prompt = "música eletrônica suave"
+        val result = tokenizer(prompt)
+        assertEquals(
+            listOf(3, 51, 2, 7, 2617, 3, 400, 17, 52, 10079, 12878, 2629, 9, 162, 1),
+            result.ids,
+        )
+        assertEquals(
+            listOf("▁", "m", "ú", "s", "ica", "▁", "ele", "t", "r", "ô", "nica", "▁su", "a", "ve", "</s>"),
+            result.tokens,
+        )
+    }
 }

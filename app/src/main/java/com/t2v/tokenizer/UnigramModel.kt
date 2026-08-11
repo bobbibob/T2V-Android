@@ -130,7 +130,7 @@ class UnigramModel(
             }
             return byteTokens
         }
-        return listOf((unkId ?: 0) to "<unk>")
+        return listOf((unkId ?: 0) to piece)
     }
 
     /** UTF-8 byte length of the character starting at [pos]. */
