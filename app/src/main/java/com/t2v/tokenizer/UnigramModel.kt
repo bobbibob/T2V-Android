@@ -161,7 +161,7 @@ class UnigramTrie {
 
     /**
      * Returns all complete tokens (leaf nodes) that are prefixes of
-     * `bytes[start..]`, in order of increasing byte length.
+     * the byte slice starting at [start], in order of increasing byte length.
      */
     fun commonPrefixSearch(bytes: ByteArray, start: Int): List<ByteArray> {
         val results = mutableListOf<ByteArray>()
