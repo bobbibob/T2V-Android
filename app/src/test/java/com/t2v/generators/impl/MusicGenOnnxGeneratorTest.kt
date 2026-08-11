@@ -61,7 +61,7 @@ class MusicGenOnnxGeneratorTest {
     }
 
     @Test
-    fun `generate tokenizes the prompt before refusing`() {
+    fun `generate refuses until the bundle is installed and smoke-tested`() {
         withGenerator { generator ->
             val request = GeneratorRequest(
                 prompt = "rock guitar riff, energetic, 120 bpm",
@@ -69,16 +69,16 @@ class MusicGenOnnxGeneratorTest {
                 category = GeneratorCategory.Music,
             )
 
-            var thrown: IllegalStateException? = null
+            var thrown: IllegalArgumentException? = null
             try {
                 runBlocking { generator.generate(request) }
-            } catch (e: IllegalStateException) {
+            } catch (e: IllegalArgumentException) {
                 thrown = e
             }
 
             assertNotNull("generate must refuse while the pipeline is not smoke-tested", thrown)
-            assertTrue(thrown!!.message.orEmpty().contains("tokens"))
-            assertTrue(thrown.message.orEmpty().contains("smoke-tested"))
+            assertTrue(thrown!!.message.orEmpty().contains("smoke-tested"))
+            assertTrue(thrown.message.orEmpty().contains("installed"))
         }
     }
 }

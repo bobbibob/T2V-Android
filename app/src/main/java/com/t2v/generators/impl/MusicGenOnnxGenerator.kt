@@ -8,6 +8,7 @@ import com.t2v.generators.GeneratorRequest
 import com.t2v.generators.GeneratorResult
 import com.t2v.generators.runtime.LiteRtModelInstaller
 import com.t2v.generators.runtime.LiteRtModelRuntime
+import com.t2v.generators.runtime.MusicGenOnnxRuntime
 import com.t2v.tokenizer.MusicGenTokenizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -82,38 +83,50 @@ class MusicGenOnnxGenerator(
         tokenizer()(prompt)
 
     override suspend fun generate(request: GeneratorRequest): GeneratorResult = withContext(Dispatchers.IO) {
-        // Tokenize the prompt up front. This exercises the tokenizer path even
-        // while the ONNX pipeline is still unverified, and lets a device-side
-        // check confirm the ids before the first real inference run.
+        require(isAvailable()) {
+            "MusicGen bundle is not installed and smoke-tested on this device"
+        }
         val encoded = encodePrompt(request.prompt)
-        // The pipeline drives each generator. Until the ARM64 smoke-test lands
-        // we must not claim to have produced audio; refuse the call so
-        // AudioTagInserter skips this tag (matching NSynth behaviour).
-        throw IllegalStateException(
-            "MusicGen is still in development: LiteRT export not smoke-tested on a device yet" +
-                " (prompt encoded to ${encoded.ids.size} tokens, first=${encoded.ids.firstOrNull()})",
-        )
-        @Suppress("UNREACHABLE_CODE")
         val output = File(
             request.outputFile.parentFile ?: appContext.filesDir,
             "musicgen-${UUID.randomUUID()}.wav",
         )
         output.parentFile?.mkdirs()
-        // Real inference once tensors are verified:
-        //  1. onnx/text_encoder_int8.onnx: prompt -> (1, seq, 768) text embeddings.
-        //  2. onnx/decoder_model_merged_int8.onnx: autoregressive Sampling of
-        //     EnCodec tokens (32 steps) with cross-attention over the embeddings.
-        //  3. onnx/encodec_decode_int8.onnx: tokens -> (1, 1, 32000) PCM per 1sec.
-        AudioEncoder.encodePcm16MonoWav(
-            out = output,
-            pcm = ShortArray(0),
-            sampleRate = 32000,
-        )
+
+        // requested duration in seconds ({{duration N}}) -> EnCodec frames (50 Hz).
+        val seconds = request.durationSeconds.coerceIn(1, 30)
+        val maxNewTokens = seconds * 50
+
+        MusicGenOnnxRuntime(runtime.rootDirectory.resolve(LiteRtModelRuntime.MUSIC_GEN_SMALL.modelId)).use { onnx ->
+            val encoderHidden = onnx.encodeText(
+                encoded.ids.toIntArray(),
+                encoded.attentionMask.toIntArray(),
+            )
+            val codes = onnx.generateAudioCodes(
+                encoderHidden = encoderHidden,
+                encoderAttn = encoded.attentionMask.toIntArray(),
+                guidance = MusicGenOnnxRuntime.DEFAULT_GUIDANCE,
+                maxNewTokens = maxNewTokens,
+            )
+            val audio = onnx.decodeAudio(codes, maxNewTokens)
+
+            val pcm = ShortArray(audio.size)
+            for (i in audio.indices) {
+                val v = (audio[i] * 32767f).coerceIn(-32768f, 32767f)
+                pcm[i] = v.toInt().toShort()
+            }
+            AudioEncoder.encodePcm16MonoWav(
+                out = output,
+                pcm = pcm,
+                sampleRate = MusicGenOnnxRuntime.SAMPLE_RATE,
+            )
+        }
+
         GeneratorResult(
             outputFile = output,
-            sampleRate = 32000,
+            sampleRate = MusicGenOnnxRuntime.SAMPLE_RATE,
             channels = 1,
-            durationMs = 0,
+            durationMs = ((maxNewTokens * MusicGenOnnxRuntime.SAMPLES_PER_CODE_FRAME) * 1000L / MusicGenOnnxRuntime.SAMPLE_RATE).toInt(),
             bytesWritten = output.length(),
         )
     }
