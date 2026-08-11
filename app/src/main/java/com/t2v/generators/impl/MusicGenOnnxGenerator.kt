@@ -8,6 +8,7 @@ import com.t2v.generators.GeneratorRequest
 import com.t2v.generators.GeneratorResult
 import com.t2v.generators.runtime.LiteRtModelInstaller
 import com.t2v.generators.runtime.LiteRtModelRuntime
+import com.t2v.tokenizer.MusicGenTokenizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -53,12 +54,44 @@ class MusicGenOnnxGenerator(
             catalog = requireNotNull(LiteRtModelRuntime.catalogEntryFor("musicgen-small")),
         )
 
+    /** Path of the installed MusicGen T5 `tokenizer.json` inside the bundle. */
+    private fun tokenizerFile(): File =
+        File(
+            runtime.rootDirectory,
+            "${LiteRtModelRuntime.MUSIC_GEN_SMALL.modelId}/tokenizer.json",
+        )
+
+    /**
+     * Loads the MusicGen T5 Unigram tokenizer from the installed bundle.
+     *
+     * The tokenizer.json is part of [LiteRtModelRuntime.MUSIC_GEN_SMALL] and its
+     * SHA-256 is verified at install time, so reading it here is safe once the
+     * bundle is installed.
+     */
+    private fun tokenizer(): MusicGenTokenizer =
+        MusicGenTokenizer.fromJson(tokenizerFile().readText())
+
+    /**
+     * Encodes [prompt] into ids, tokens and attention mask.
+     *
+     * Kept separate from [generate] so the tokenizer can be exercised on-device
+     * before the ONNX export is smoke-tested: it needs only the tokenizer.json,
+     * not the three ONNX weights.
+     */
+    fun encodePrompt(prompt: String): MusicGenTokenizer.EncodeResult =
+        tokenizer()(prompt)
+
     override suspend fun generate(request: GeneratorRequest): GeneratorResult = withContext(Dispatchers.IO) {
+        // Tokenize the prompt up front. This exercises the tokenizer path even
+        // while the ONNX pipeline is still unverified, and lets a device-side
+        // check confirm the ids before the first real inference run.
+        val encoded = encodePrompt(request.prompt)
         // The pipeline drives each generator. Until the ARM64 smoke-test lands
         // we must not claim to have produced audio; refuse the call so
         // AudioTagInserter skips this tag (matching NSynth behaviour).
         throw IllegalStateException(
-            "MusicGen is still in development: LiteRT export not smoke-tested on a device yet",
+            "MusicGen is still in development: LiteRT export not smoke-tested on a device yet" +
+                " (prompt encoded to ${encoded.ids.size} tokens, first=${encoded.ids.firstOrNull()})",
         )
         @Suppress("UNREACHABLE_CODE")
         val output = File(
