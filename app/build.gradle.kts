@@ -18,6 +18,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         // FFmpeg CLI is currently verified and packaged only for modern 64-bit ARM.
         ndk { abiFilters += listOf("arm64-v8a") }
