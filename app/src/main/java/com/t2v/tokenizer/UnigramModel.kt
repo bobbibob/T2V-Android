@@ -89,7 +89,8 @@ class UnigramModel(
         while (endsAt > 0) {
             val node = best[endsAt]
             val sa = node.startsAt
-            val piece = sentence.substring(sa, endsAt)
+            if (sa < 0) break
+            val piece = String(bytes.copyOfRange(sa, endsAt), Charsets.UTF_8)
             if (unkId != null && node.id == unkId) {
                 fuseBuffer.add(piece)
             } else {

@@ -19,6 +19,11 @@ class PrecompiledNormalizer(charsmapBase64: String) {
 
     init {
         val raw = java.util.Base64.getDecoder().decode(charsmapBase64)
+        if (raw.isEmpty()) {
+            array = IntArray(0)
+            normalized = ""
+            return
+        }
         val buf = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
         val trieSizeBytes = buf.int
         val trieEntries = trieSizeBytes / 4
@@ -50,6 +55,7 @@ class PrecompiledNormalizer(charsmapBase64: String) {
      * for prefixes of [key] that are leaves.
      */
     private fun commonPrefixSearch(key: ByteArray): List<Int> {
+        if (array.isEmpty()) return emptyList()
         val results = mutableListOf<Int>()
         var nodePos = 0
         var unit = array[nodePos]

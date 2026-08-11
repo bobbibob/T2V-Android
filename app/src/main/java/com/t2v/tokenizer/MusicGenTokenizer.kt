@@ -26,6 +26,7 @@ class MusicGenTokenizer private constructor(
     private val preTokenizer: PreTokenizerPipeline,
     private val model: UnigramModel,
     private val eosTokenIds: List<Int>,
+    private val eosTokenStrings: List<String>,
     private val padTokenId: Int,
     private val unkTokenId: Int,
 ) {
@@ -62,9 +63,11 @@ class MusicGenTokenizer private constructor(
 
         // 4. Post-process: append </s> (EOS)
         allIds.addAll(eosTokenIds)
-        allTokens.addAll(eosTokenIds.map { id ->
-            model.let { "<eos>" }
-        })
+        if (eosTokenStrings.size == eosTokenIds.size) {
+            allTokens.addAll(eosTokenStrings)
+        } else {
+            allTokens.addAll(eosTokenIds.map { it.toString() })
+        }
 
         val attentionMask = List(allIds.size) { 1 }
 
@@ -124,6 +127,7 @@ class MusicGenTokenizer private constructor(
 
             // Post-processor: extract EOS token ids
             val eosTokenIds = mutableListOf<Int>()
+            val eosTokenStrings = mutableListOf<String>()
             var padTokenId = 0
             when (val pp = config.post_processor) {
                 is PostProcessorConfig.TemplateProcessing -> {
@@ -133,6 +137,7 @@ class MusicGenTokenizer private constructor(
                             val info = pp.special_tokens[specialTokenRef.id]
                             if (info != null) {
                                 eosTokenIds.addAll(info.ids)
+                                eosTokenStrings.addAll(info.tokens)
                             }
                         }
                     }
@@ -155,6 +160,7 @@ class MusicGenTokenizer private constructor(
                 preTokenizer = preTokenizer,
                 model = model,
                 eosTokenIds = eosTokenIds,
+                eosTokenStrings = eosTokenStrings,
                 padTokenId = padTokenId,
                 unkTokenId = unkTokenId,
             )
