@@ -124,7 +124,7 @@ class UnigramModel(
                 if (byteId != null) {
                     byteTokens.add(byteId to hex)
                 } else {
-                    byteTokens.add(unkId ?: 0 to "<unk>")
+                    byteTokens.add((unkId ?: 0) to "<unk>")
                 }
             }
             return byteTokens
