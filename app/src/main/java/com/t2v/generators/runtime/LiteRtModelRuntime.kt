@@ -220,7 +220,7 @@ class LiteRtModelRuntime(
                 ),
                 ManifestEntry(
                     path = "tokenizer.json",
-                    expectedBytes = 2_421_191,
+                    expectedBytes = 2_422_191,
                     sha256 = "a45ba2af379e1d559dbbdf176bb6a338945019534a20e15e07d22bbd0a7544b3",
                 ),
             ),

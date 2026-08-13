@@ -131,6 +131,41 @@ class MusicGenOnnxRuntime(
         return codes
     }
 
+    /**
+     * Runs a single step-0 decoder pass (no cache, all-PAD input) and returns the
+     * CFG-merged logits for all four codebooks as a flat `4 * [VOCAB_SIZE]` array
+     * (codebook row `cb` at `[cb * VOCAB_SIZE, (cb+1) * VOCAB_SIZE)`).
+     *
+     * Exposed for the on-device smoke test: step-0 logits depend only on the
+     * encoder inputs, so they are the strongest structural check that the ONNX
+     * pipeline matches the verified reference without the int8 near-tie flips
+     * that can occur later in generation.
+     */
+    fun step0MergedLogits(
+        encoderHidden: FloatArray,
+        encoderAttn: IntArray,
+        guidance: Float = DEFAULT_GUIDANCE,
+    ): FloatArray {
+        val (logits, _) = decoderStep(
+            col = LongArray(8) { PAD_TOKEN.toLong() },
+            encoderHidden = encoderHidden,
+            encoderAttn = encoderAttn,
+            pastDecoder = null,
+            pastEncoder = null,
+            useCache = false,
+        )
+        val merged = FloatArray(4 * VOCAB_SIZE)
+        for (cb in 0 until 4) {
+            val base = cb * VOCAB_SIZE
+            val uncond = cb * VOCAB_SIZE + 4 * VOCAB_SIZE
+            for (v in 0 until VOCAB_SIZE) {
+                merged[cb * VOCAB_SIZE + v] =
+                    logits[uncond + v] + (logits[base + v] - logits[uncond + v]) * guidance
+            }
+        }
+        return merged
+    }
+
     /** Decodes [numFrames] code frames (rows 0..3 of [codes]) into `numFrames * 640` PCM samples. */
     fun decodeAudio(codes: IntArray, numFrames: Int): FloatArray {
         val audio = FloatArray(numFrames * SAMPLES_PER_CODE_FRAME)
@@ -161,12 +196,12 @@ class MusicGenOnnxRuntime(
         feeds["use_cache_branch"] = boolTensor(env, useCache)
 
         for (l in 0 until NUM_LAYERS) {
-            val (dk, dv) = pastDecoder?.let { it.keys[l] to it.values[l] } ?: (FloatArray(0) to FloatArray(0))
-            feeds["past_key_values.$l.decoder.key"] = tensor(env, dk, pastShape(dk))
-            feeds["past_key_values.$l.decoder.value"] = tensor(env, dv, pastShape(dv))
-            val (ek, ev) = pastEncoder?.let { it.keys[l] to it.values[l] } ?: (FloatArray(0) to FloatArray(0))
-            feeds["past_key_values.$l.encoder.key"] = tensor(env, ek, pastShape(ek))
-            feeds["past_key_values.$l.encoder.value"] = tensor(env, ev, pastShape(ev))
+            val (dk0, dv0) = pastDecoder?.let { it.keys[l] to it.values[l] } ?: (FloatArray(0) to FloatArray(0))
+            feeds["past_key_values.$l.decoder.key"] = tensor(env, dk0, pastShape(dk0))
+            feeds["past_key_values.$l.decoder.value"] = tensor(env, dv0, pastShape(dv0))
+            val (ek0, ev0) = pastEncoder?.let { it.encoderKeys[l] to it.encoderValues[l] } ?: (FloatArray(0) to FloatArray(0))
+            feeds["past_key_values.$l.encoder.key"] = tensor(env, ek0, pastShape(ek0))
+            feeds["past_key_values.$l.encoder.value"] = tensor(env, ev0, pastShape(ev0))
         }
 
         var logits: FloatArray? = null

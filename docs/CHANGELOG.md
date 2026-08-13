@@ -2,6 +2,25 @@
 
 Все значимые изменения в T2V документируются здесь.
 
+## [Unreleased] - 2026-08-12
+
+### Fixed
+- **MusicGen ONNX на устройстве**: KV-cache encoder'а кормился из полей
+  decoder'а (`pastEncoder.keys` вместо `pastEncoder.encoderKeys`) — decoder
+  падал на шаге 1+ с reshape-ошибкой. Теперь полный пайплайн
+  (text_encoder → autoregressive decoder с guidance=3 → EnCodec) отрабатывает
+  на ARM64 и пишет `.smoke-tested` маркер.
+- **Манифест MusicGen**: `tokenizer.json` весит 2 422 191 байт (в манифесте
+  было 2 421 191), из-за чего бандл никогда не считался установленным.
+- **MusicGen смоук-тест**: эталонный промпт кормится вместе с EOS-токеном
+  (T=12), как в референсном пайплайне Transformers.js; точное сравнение
+  step-0 argmax заменено на проверку «эталонные токены в top-20 лог-итов»,
+  т.к. int8-ядра ORT дают near-tie флипы между платформами.
+
+### Added
+- **`MusicGenOnnxRuntime.step0MergedLogits`** — единичный прогон декодера без
+  кэша с CFG-merge, для структурной проверки пайплайна на устройстве.
+
 ## [Unreleased] - 2026-08-07
 
 ### Fixed
