@@ -2,6 +2,17 @@
 
 Guidelines for AI agents and human contributors working on **T2V**, a standalone Android TTS and audiobook application.
 
+## КРИТИЧЕСКИ ВАЖНО: Никогда не нагружай машину разработчика
+
+**НИКОГДА** не запускай на локальной машине разработчика ничего тяжёлого: gradle/gradlew, java, kotlin-daemon, эмуляторы (qemu/emulator), ollama, компиляции, unit/instrumented-тесты, сборки, `adb install/push` тяжёлых файлов. Это запрещено. Нарушение = риск сжечь процессор/Mac разработчика.
+
+Вместо этого:
+- **Все сборки и тесты** выполняются ТОЛЬКО через **GitHub Actions** (`.github/workflows/android.yml`): push в `main` → CI сам собирает APK и прогоняет `testDebugUnitTest`. Команды: `git add/commit/push`, просмотр статуса через `gh run`/`gh api` (лёгкие, разрешены).
+- Готовые артефакты получать через `gh run download 31707059660 -n app-debug` (лёгкая загрузка, разрешено).
+- Модели на устройство заливать малыми реже (см. ниже) и только по явной команде пользователя.
+- Не поднимай фоновые процессы, демоны, не запускай adb-сервер в контейнере, если не просили.
+- Категорически нельзя: `./gradlew`, `java`, `kotlin-daemon`, `emulator`, `ollama`, фоновая компиляция.
+
 ## Project Structure & Module Organization
 
 ```
