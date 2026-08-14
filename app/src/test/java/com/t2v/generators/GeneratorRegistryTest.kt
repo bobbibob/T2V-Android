@@ -101,21 +101,20 @@ class GeneratorRegistryTest {
     }
 
     @Test
-    fun `musicgen registry id maps to the music category and is gated`() {
+    fun `musicgen registry id maps to the music category and is verified`() {
         val manifest = LiteRtModelRuntime.MUSIC_GEN_SMALL
         assertEquals("musicgen-small", manifest.modelId)
-        // The catalog keeps the entry in RuntimeInDevelopment (canInstall=false)
-        // and exposes TagDocs for the generator id. A plain JVM unit test
-        // cannot build the native LiteRT runtime, so we assert the registration
-        // contract that governs selection, not inference.
+        // The catalog entry is Verified (canInstall=true) after passing the ARM64
+        // smoke-test. A plain JVM unit test cannot build the native LiteRT runtime,
+        // so we assert the registration contract that governs selection, not inference.
         val entry = com.t2v.core.model.GenerationModelCatalog.entries
             .firstOrNull { it.id == "musicgen-small" }
         assertNotNull("MusicGen catalog entry must exist", entry)
         assertEquals(
-            com.t2v.core.model.GenerationModelCatalog.Support.RuntimeInDevelopment,
+            com.t2v.core.model.GenerationModelCatalog.Support.Verified,
             entry!!.support,
         )
-        assertEquals(false, entry.canInstall)
+        assertEquals(true, entry.canInstall)
         assertEquals(
             setOf(com.t2v.core.model.GenerationModelCatalog.Category.Music),
             entry.categories,

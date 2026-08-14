@@ -14,10 +14,10 @@ class GenerationModelCatalogTest {
     }
 
     @Test
-    fun `musicgen catalog entry is registered, in development and documented`() {
+    fun `musicgen catalog entry is registered, verified and documented`() {
         val musicGen = GenerationModelCatalog.entries.single { it.id == "musicgen-small" }
-        assertEquals(GenerationModelCatalog.Support.RuntimeInDevelopment, musicGen.support)
-        assertEquals(false, musicGen.canInstall)
+        assertEquals(GenerationModelCatalog.Support.Verified, musicGen.support)
+        assertEquals(true, musicGen.canInstall)
         assertEquals(
             setOf(GenerationModelCatalog.Category.Music),
             musicGen.categories,
