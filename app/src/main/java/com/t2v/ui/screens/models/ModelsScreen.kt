@@ -200,9 +200,7 @@ fun ModelsScreen(
                     enabled = true,
                     installable = GenerationModelCatalog.entries
                         .firstOrNull { it.id == "musicgen-small" }?.canInstall == true,
-                    unavailableNote =
-                        "MusicGen ещё не прошёл ARM64 smoke-тест на устройстве — настоящая " +
-                            "AI-генерация музыки станет доступна только после проверки экспорта.",
+                    unavailableNote = null,
                     state = state,
                     vm = vm,
                     infoRepository = GenerationModelCatalog.repositoryFor("musicgen-small"),

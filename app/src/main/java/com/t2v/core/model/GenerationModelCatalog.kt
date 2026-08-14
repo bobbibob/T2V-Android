@@ -262,7 +262,7 @@ object GenerationModelCatalog {
     )
 
     private val MUSIC_GEN_TAGS = TagDocs(
-        tagline = "MusicGen через LiteRT — настоящая AI-генерация музыки на устройстве. Модель ещё не прошла ARM64 smoke-test, поэтому карточка отображается, но не выбирается.",
+        tagline = "MusicGen через LiteRT — настоящая AI-генерация музыки на устройстве. Модель прошла ARM64 smoke-test и доступна для установки.",
         supported = listOf(
             "Свободный промпт: жанр, инструменты, настроение, BPM",
             "{{duration 1..30}} - длительность в секундах",
@@ -771,14 +771,14 @@ object GenerationModelCatalog {
                 runtimeBundled = false,
             ),
             tags = MUSIC_GEN_TAGS,
-            support = Support.RuntimeInDevelopment,
+            support = Support.Verified,
             approximateDownloadBytes = 599_023_252L,
             license = "CC-BY-NC 4.0 (MusicGen-small)",
             repository = "wide-video/musicgen-small-v1.0.0",
             revision = null,
             notes = "Real AI music generation via MusicGen-small ONNX export "
-                + "(ONNX Runtime, int8). Not selectable until the ARM64 smoke-test "
-                + "confirms inference and SHA-256.",
+                + "(ONNX Runtime, int8). Verified by the ARM64 smoke-test; installs "
+                + "and runs on-device.",
             liteRtFiles = listOf(
                 "onnx/text_encoder_int8.onnx",
                 "onnx/decoder_model_merged_int8.onnx",
