@@ -1,12 +1,16 @@
 package com.t2v.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -76,8 +80,27 @@ private val LtvTypography = Typography(
     labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium),
 )
 
+/**
+ * T2V theme.
+ *
+ * On Android 12+ (API 31+) uses Material You dynamic colors when available,
+ * falling back to the branded [LTVColors.Seed] palette on older versions.
+ * LTV markup highlight colors always come from [LTVColors] regardless of
+ * the dynamic scheme, so syntax highlighting stays consistent.
+ */
 @Composable
-fun LTVTheme(content: @Composable () -> Unit) {
-    val colors = if (isSystemInDarkTheme()) DarkColors else LightColors
+fun LTVTheme(
+    useDynamicColors: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    val isDark = isSystemInDarkTheme()
+    val colors = when {
+        useDynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        isDark -> DarkColors
+        else -> LightColors
+    }
     MaterialTheme(colorScheme = colors, typography = LtvTypography, content = content)
 }

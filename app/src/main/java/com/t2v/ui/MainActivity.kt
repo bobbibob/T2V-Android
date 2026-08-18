@@ -34,10 +34,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun LTVApp(windowSizeClass: WindowSizeClass? = null) {
-    LTVTheme {
+    val settings by AppContainer.settings(LocalContext.current).flow.collectAsState(initial = null)
+    val useDynamicColors = settings?.dynamicColors ?: true
+    LTVTheme(useDynamicColors = useDynamicColors) {
         Surface(modifier = Modifier.fillMaxSize()) {
             val navController = rememberNavController()
-            val settings by AppContainer.settings(LocalContext.current).flow.collectAsState(initial = null)
             if (settings != null) {
                 val start = if (settings!!.onboardingCompleted) Routes.Editor else Routes.Onboarding
                 LTVNavHost(navController, start, windowSizeClass = windowSizeClass)

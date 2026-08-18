@@ -40,6 +40,8 @@ class SettingsRepository(private val context: Context) {
         val PARAGRAPH_PAUSE_MAX = intPreferencesKey("paragraph_pause_max_ms")
         val MARKUP_TOOLBAR = booleanPreferencesKey("markup_toolbar")
         val SYNTAX_HIGHLIGHT = booleanPreferencesKey("syntax_highlight")
+        /** Material You dynamic colors (Android 12+). Default true. */
+        val DYNAMIC_COLORS = booleanPreferencesKey("dynamic_colors")
 
         val SELECTED_MODEL_ID = stringPreferencesKey("selected_model_id")
         /** Independently selected generators for each editor track. */
@@ -129,6 +131,7 @@ class SettingsRepository(private val context: Context) {
         paragraphPauseMaxMs = this[Keys.PARAGRAPH_PAUSE_MAX] ?: 900,
         markupToolbar = this[Keys.MARKUP_TOOLBAR] ?: true,
         syntaxHighlight = this[Keys.SYNTAX_HIGHLIGHT] ?: true,
+        dynamicColors = this[Keys.DYNAMIC_COLORS] ?: true,
         selectedModelId = this[Keys.SELECTED_MODEL_ID] ?: "",
         selectedVoiceModelId = this[Keys.SELECTED_VOICE_MODEL_ID]
             ?: this[Keys.SELECTED_MODEL_ID]
@@ -176,6 +179,7 @@ data class Settings(
     val paragraphPauseMaxMs: Int,
     val markupToolbar: Boolean,
     val syntaxHighlight: Boolean,
+    val dynamicColors: Boolean = true,
     val selectedModelId: String,
     val selectedVoiceModelId: String,
     val selectedMusicModelId: String,

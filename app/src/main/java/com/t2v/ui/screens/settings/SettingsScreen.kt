@@ -79,6 +79,9 @@ fun SettingsScreen(
             SliderSetting("Chunk size", state.settings.chunkSize.toFloat(), 500f..5000f) { vm.setChunkSize(it.toInt()) }
             SwitchSetting("Markup toolbar", state.settings.markupToolbar) { vm.setMarkupToolbar(it) }
             SwitchSetting("Syntax highlight", state.settings.syntaxHighlight) { vm.setSyntaxHighlight(it) }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                SwitchSetting("Material You dynamic colors", state.settings.dynamicColors) { vm.setDynamicColors(it) }
+            }
 
             HorizontalDivider()
 
@@ -188,7 +191,7 @@ data class SettingsUiState(val settings: Settings = Settings(
     uiLanguage = "en", outputDir = "output", ttsEngine = "", voiceId = "",
     language = "", speed = 1.0, splitMode = "safe_chunks", exportMode = "single",
     chunkSize = 2500, pauseBetweenBlocksMs = 350, pauseBetweenChaptersMs = 900,
-    paragraphPauseMinMs = 450, paragraphPauseMaxMs = 900, markupToolbar = true, syntaxHighlight = true,
+    paragraphPauseMinMs = 450, paragraphPauseMaxMs = 900, markupToolbar = true, syntaxHighlight = true, dynamicColors = true,
     selectedModelId = "", selectedVoiceModelId = "", selectedMusicModelId = "",
     selectedSoundModelId = "", selectedMusicGenerator = "", selectedSoundGenerator = "", ttsMode = "",
     modelsTreeUri = "", onboardingCompleted = false, engines = emptyMap(),
@@ -208,6 +211,7 @@ class SettingsViewModel(private val context: android.content.Context) : ViewMode
     fun setChunkSize(v: Int) = viewModelScope.launch { repo.update { it[SettingsRepository.Keys.CHUNK_SIZE] = v } }
     fun setMarkupToolbar(v: Boolean) = viewModelScope.launch { repo.update { it[SettingsRepository.Keys.MARKUP_TOOLBAR] = v } }
     fun setSyntaxHighlight(v: Boolean) = viewModelScope.launch { repo.update { it[SettingsRepository.Keys.SYNTAX_HIGHLIGHT] = v } }
+    fun setDynamicColors(v: Boolean) = viewModelScope.launch { repo.update { it[SettingsRepository.Keys.DYNAMIC_COLORS] = v } }
     fun setTtsMode(v: String) = viewModelScope.launch { repo.update { it[SettingsRepository.Keys.TTS_MODE] = v } }
     fun setModelsTreeUri(v: String) = viewModelScope.launch { repo.update { it[SettingsRepository.Keys.MODELS_TREE_URI] = v } }
     fun setApiKey(engine: String, v: String, field: String = "apiKey") = viewModelScope.launch {
