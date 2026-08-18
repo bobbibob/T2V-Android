@@ -49,6 +49,7 @@ fun ReviewScreen(
     windowSizeClass: WindowSizeClass? = null,
 ) {
     val state by vm.state.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
     LTVScaffold(
         nav = nav,
         title = stringResource(R.string.review_title),
