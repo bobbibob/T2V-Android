@@ -119,6 +119,22 @@ fun GenerationScreen(
                 }
             }
 
+            // Auto-TTS: detect text language and suggest a matching voice
+            if (state.autoDetectResult != null) {
+                Text(
+                    "Auto: ${state.autoDetectResult!!.bcp47} (${(state.autoDetectResult!!.confidence * 100).toInt()}%)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            OutlinedButton(
+                onClick = { vm.detectLanguage() },
+                enabled = !state.isRunning,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Auto-detect language")
+            }
+
             Text("Speed: ${"%.2f".format(state.speed)}")
             Slider(
                 value = state.speed.toFloat(),
@@ -215,6 +231,8 @@ data class GenState(
     val audiobookId: Long? = null,
     /** True once we've already auto-navigated to the audio editor for this run. */
     val autoNavigatedToEditor: Boolean = false,
+    /** Auto-TTS detected language hint. */
+    val autoDetectResult: com.t2v.tts.auto.AutoTtsDetector.VoiceHint? = null,
 )
 
 class GenerationViewModel(
@@ -265,6 +283,26 @@ class GenerationViewModel(
     fun setChapterTitle(value: String) = _state.update { it.copy(chapterTitle = value) }
     fun setSpeed(v: Double) = _state.update { it.copy(speed = v) }
     fun cancel() = viewModelScope.launch { pipeline.cancel() }
+
+    /**
+     * Auto-detect the language of the project text and suggest a matching
+     * engine/voice. Uses [com.t2v.tts.auto.AutoTtsDetector] heuristics.
+     */
+    fun detectLanguage() {
+        viewModelScope.launch {
+            val text = db.projects().byId(projectId)?.rawText ?: return@launch
+            val hint = com.t2v.tts.auto.AutoTtsDetector.detect(text)
+            _state.update { it.copy(autoDetectResult = hint) }
+            // Try to pick an engine that supports the detected language
+            val matchingEngine = registry.allEngineInfos().firstOrNull { info ->
+                val voices = runCatching { registry.get(info.id).listVoices() }.getOrDefault(emptyList())
+                com.t2v.tts.auto.AutoVoicePicker.pickVoice(voices, hint.bcp47) != null
+            }
+            if (matchingEngine != null) {
+                _state.update { it.copy(selectedEngine = matchingEngine.id) }
+            }
+        }
+    }
     fun markAutoNavigated() {
         _state.update { it.copy(autoNavigatedToEditor = true) }
     }
