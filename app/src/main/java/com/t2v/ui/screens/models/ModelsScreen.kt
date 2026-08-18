@@ -48,6 +48,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.t2v.generators.runtime.LiteRtModelInstaller
 import com.t2v.generators.runtime.LiteRtModelRuntime
 import com.t2v.R
@@ -58,6 +60,7 @@ import com.t2v.server.HuggingFaceRepository
 import com.t2v.tts.catalog.RussianVoiceInstaller
 import com.t2v.tts.engines.PiperRussianTtsEngine
 import com.t2v.ui.components.LTVScaffold
+import com.t2v.worker.ModelDownloadWorker
 import com.t2v.ui.components.TagInfoDialog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -1208,6 +1211,73 @@ class ModelsViewModel(private val context: android.content.Context) : ViewModel(
             }
         }
         loadKokoro()
+        observeWorkerDownloads()
+    }
+
+    /**
+     * Observes [WorkInfo] for every [ModelDownloadWorker] so progress
+     * survives process death and the user leaving the Models screen.
+     */
+    private fun observeWorkerDownloads() {
+        viewModelScope.launch {
+            WorkManager.getInstance(context)
+                .getWorkInfosByTagFlow(ModelDownloadWorker.TAG_DOWNLOAD)
+                .collect { infos ->
+                    val active = infos.firstOrNull {
+                        it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
+                    }
+                    if (active != null) {
+                        val progress = active.progress
+                            .getFloat(ModelDownloadWorker.KEY_PROGRESS, 0f)
+                        val downloaded = active.progress
+                            .getLong(ModelDownloadWorker.KEY_DOWNLOADED_BYTES, 0L)
+                        val total = active.progress
+                            .getLong(ModelDownloadWorker.KEY_TOTAL_BYTES, -1L)
+                        val catalogId = active.tags.firstNotNullOfOrNull { tag ->
+                            tag.removePrefix(ModelDownloadWorker.TAG_CATALOG_PREFIX)
+                                .takeIf { it != tag }
+                        }
+                        _state.update {
+                            it.copy(
+                                downloadingCatalogId = catalogId,
+                                catalogDownloadProgress = progress,
+                                catalogDownloadedBytes = downloaded,
+                                catalogDownloadTotalBytes = total,
+                                downloading = true,
+                            )
+                        }
+                    } else {
+                        val failed = infos.firstOrNull { it.state == WorkInfo.State.FAILED }
+                        val succeeded = infos.firstOrNull { it.state == WorkInfo.State.SUCCEEDED }
+                        if (failed != null) {
+                            val errMsg = failed.outputData
+                                .getString(ModelDownloadWorker.KEY_ERROR)
+                                ?: "download failed"
+                            _state.update {
+                                it.copy(
+                                    downloadingCatalogId = null,
+                                    catalogDownloadProgress = 0f,
+                                    catalogDownloadedBytes = 0L,
+                                    catalogDownloadTotalBytes = -1L,
+                                    downloading = false,
+                                    error = errMsg,
+                                )
+                            }
+                        } else if (succeeded != null) {
+                            _state.update {
+                                it.copy(
+                                    installed = repository().installed(),
+                                    downloadingCatalogId = null,
+                                    catalogDownloadProgress = 0f,
+                                    catalogDownloadedBytes = 0L,
+                                    catalogDownloadTotalBytes = -1L,
+                                    downloading = false,
+                                )
+                            }
+                        }
+                    }
+                }
+        }
     }
 
     private fun loadKokoro() {
@@ -1336,6 +1406,9 @@ class ModelsViewModel(private val context: android.content.Context) : ViewModel(
     fun cancelDownload() {
         downloadJob?.cancel()
         downloadJob = null
+        _state.value.downloadingCatalogId?.let { id ->
+            ModelDownloadWorker.cancel(context, id)
+        }
         _state.update {
             it.copy(
                 downloading = false,
@@ -1373,7 +1446,26 @@ class ModelsViewModel(private val context: android.content.Context) : ViewModel(
                 downloadKokoro()
             }
             com.t2v.core.model.GenerationModelCatalog.isHuggingFaceRepository(catalogId) -> {
-                downloadCatalogModel(entry)
+                // Delegate to ModelDownloadWorker so the download survives the
+                // user leaving the screen and process recreation.
+                val repo = com.t2v.core.model.GenerationModelCatalog.repositoryFor(catalogId) ?: return
+                ModelDownloadWorker.enqueue(
+                    context = context,
+                    catalogId = catalogId,
+                    repoId = repo,
+                    modelsRoot = modelsRoot,
+                    modelsTreeUri = modelsTreeUri,
+                    token = huggingFaceToken,
+                )
+                _state.update {
+                    it.copy(
+                        downloadingCatalogId = catalogId,
+                        catalogDownloadProgress = 0f,
+                        catalogDownloadedBytes = 0L,
+                        catalogDownloadTotalBytes = entry.approximateDownloadBytes ?: -1L,
+                        error = null,
+                    )
+                }
             }
             else -> _state.update {
                 it.copy(
