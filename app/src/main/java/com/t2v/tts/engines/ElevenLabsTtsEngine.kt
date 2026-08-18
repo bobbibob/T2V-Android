@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
@@ -74,9 +75,12 @@ class ElevenLabsTtsEngine(
                 val arr = obj["voices"] as? JsonArray ?: return@runCatching emptyList()
                 arr.mapNotNull { el ->
                     val v = el as? JsonObject ?: return@mapNotNull null
+                    val voiceId = v["voice_id"]?.jsonPrimitive?.let { if (it.isString) it.content else null }
+                    val name = v["name"]?.jsonPrimitive?.let { if (it.isString) it.content else null }.orEmpty()
+                    voiceId ?: return@mapNotNull null
                     VoiceInfo(
-                        id = v["voice_id"]?.toString()?.trim('"') ?: return@mapNotNull null,
-                        displayName = v["name"]?.toString()?.trim('"').orEmpty(),
+                        id = voiceId,
+                        displayName = name,
                         language = "multi",
                         engineId = ENGINE_INFO.id,
                     )
@@ -112,7 +116,9 @@ class ElevenLabsTtsEngine(
                 }
                 val result = json.parseToJsonElement(text) as? JsonObject
                     ?: throw TtsEngineException.Generic("Invalid cloning response")
-                result["voice_id"]?.toString()?.trim('"')
+                result["voice_id"]?.jsonPrimitive?.let { p ->
+                    if (p.isString) p.content else null
+                }
                     ?: throw TtsEngineException.Generic("Voice ID is missing")
             }
         }
