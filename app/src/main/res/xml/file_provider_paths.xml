@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path name="audiobooks" path="output/" />
+    <files-path name="cache" path="cache/" />
+    <external-files-path name="external" path="." />
+</paths>

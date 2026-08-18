@@ -3,6 +3,7 @@ package com.t2v.ui.screens.review
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -27,6 +29,8 @@ import androidx.navigation.NavController
 import com.t2v.R
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.t2v.app.AppContainer
+import com.t2v.core.subtitle.SubtitleCue
+import com.t2v.core.subtitle.SubtitleWriter
 import com.t2v.data.SegmentEntity
 import com.t2v.ui.components.AudioPlaybackBar
 import com.t2v.ui.components.LTVScaffold
@@ -64,6 +68,23 @@ fun ReviewScreen(
             Button(onClick = { nav.navigate(com.t2v.ui.navigation.Routes.musicMix(audiobookId)) }) {
                 Text(stringResource(R.string.mix_render))
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { vm.exportSubtitles("srt") }) {
+                    Text("Export SRT")
+                }
+                OutlinedButton(onClick = { vm.exportSubtitles("ass") }) {
+                    Text("Export ASS")
+                }
+                OutlinedButton(onClick = { vm.shareAudiobook(context) }) {
+                    Text("Share")
+                }
+            }
+            state.subtitleMessage?.let {
+                Text(it, color = MaterialTheme.colorScheme.primary)
+            }
+            state.error?.let {
+                Text(it, color = MaterialTheme.colorScheme.error)
+            }
         }
     }
 }
@@ -82,6 +103,8 @@ private fun SegmentRow(s: SegmentEntity) {
 data class ReviewState(
     val segments: List<SegmentEntity> = emptyList(),
     val audioPath: String? = null,
+    val subtitleMessage: String? = null,
+    val error: String? = null,
 )
 
 class ReviewViewModel(
@@ -96,6 +119,85 @@ class ReviewViewModel(
             val segs = db.segments().listForAudiobook(audiobookId)
             val audioPath = db.audiobooks().byId(audiobookId)?.outputPath
             _state.update { it.copy(segments = segs, audioPath = audioPath) }
+        }
+    }
+
+    /**
+     * Builds subtitle cues from segment timings and writes an SRT or ASS
+     * file next to the audiobook output.
+     */
+    fun exportSubtitles(format: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(subtitleMessage = null, error = null) }
+            runCatching {
+                val segs = _state.value.segments
+                if (segs.isEmpty()) error("No segments to export")
+                val audioPath = _state.value.audioPath
+                val baseName = audioPath?.substringBeforeLast('.') ?: "audiobook-$audiobookId"
+                val outFile = File("$baseName.$format")
+                val cues = buildCues(segs)
+                val content = when (format) {
+                    "srt" -> SubtitleWriter.formatSrt(cues)
+                    "ass" -> SubtitleWriter.formatAss(cues)
+                    else -> error("Unknown subtitle format: $format")
+                }
+                outFile.writeText(content)
+                outFile.absolutePath
+            }.onSuccess { path ->
+                _state.update {
+                    it.copy(subtitleMessage = "Subtitles exported: $path")
+                }
+            }.onFailure { err ->
+                _state.update {
+                    it.copy(error = err.message ?: "Export failed")
+                }
+            }
+        }
+    }
+
+    /**
+     * Shares the audiobook audio file via Android Share Intent.
+     */
+    fun shareAudiobook(context: android.content.Context) {
+        val audioPath = _state.value.audioPath ?: return
+        val file = File(audioPath)
+        if (!file.isFile) {
+            _state.update { it.copy(error = "Audio file not found") }
+            return
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file,
+        )
+        val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = when (file.extension.lowercase()) {
+                "mp3" -> "audio/mpeg"
+                "wav" -> "audio/wav"
+                "aac" -> "audio/aac"
+                else -> "audio/*"
+            }
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(
+            android.content.Intent.createChooser(shareIntent, "Share audiobook"),
+        )
+    }
+
+    private fun buildCues(segments: List<SegmentEntity>): List<SubtitleCue> {
+        var currentTimeSec = 0f
+        return segments.mapIndexed { idx, seg ->
+            val startSec = currentTimeSec
+            val durationSec = (seg.durationMs.coerceAtLeast(0) / 1000f)
+            val endSec = startSec + durationSec + (seg.pauseAfterMs / 1000f)
+            currentTimeSec = endSec
+            SubtitleCue(
+                index = idx + 1,
+                startSec = startSec,
+                endSec = endSec,
+                text = seg.text,
+            )
         }
     }
 }
