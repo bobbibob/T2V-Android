@@ -64,8 +64,8 @@ class ModelDownloadWorker(
             token = token,
         )
 
-        return runCatching {
-            setProgress(workDataOf(KEY_PROGRESS to 0f, KEY_DOWNLOADED_BYTES to 0L, KEY_TOTAL_BYTES to entry.approximateDownloadBytes ?: -1L))
+        return try {
+            setProgress(workDataOf(KEY_PROGRESS to 0f, KEY_DOWNLOADED_BYTES to 0L, KEY_TOTAL_BYTES to (entry.approximateDownloadBytes ?: -1L)))
             val model = repository.model(repoId)
             val variant = model.variants.firstOrNull()
                 ?: return Result.failure(workDataOf(KEY_ERROR to "у модели нет файлов для Android"))
@@ -76,7 +76,7 @@ class ModelDownloadWorker(
                 } else {
                     0f
                 }
-                setProgress(
+                setProgressAsync(
                     workDataOf(
                         KEY_PROGRESS to progress,
                         KEY_DOWNLOADED_BYTES to downloaded.coerceAtLeast(0L),
@@ -93,7 +93,7 @@ class ModelDownloadWorker(
                     KEY_CATALOG_ID to catalogId,
                 ),
             )
-        }.getOrElse { error ->
+        } catch (error: Throwable) {
             Result.failure(workDataOf(KEY_ERROR to (error.message ?: "download failed")))
         }
     }
