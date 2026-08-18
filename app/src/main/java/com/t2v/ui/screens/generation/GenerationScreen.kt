@@ -37,6 +37,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.t2v.R
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.t2v.app.AppContainer
 import com.t2v.tts.EngineInfo
 import com.t2v.tts.VoiceConfig
@@ -57,6 +58,7 @@ fun GenerationScreen(
     nav: NavController,
     projectId: Long,
     vm: GenerationViewModel = viewModel(factory = GenerationViewModelFactory(LocalContext.current, projectId)),
+    windowSizeClass: WindowSizeClass? = null,
 ) {
     val state by vm.state.collectAsState()
     val scope = rememberCoroutineScope()
@@ -81,6 +83,7 @@ fun GenerationScreen(
         nav = nav,
         title = stringResource(R.string.nav_generation),
         onBack = { nav.popBackStack() },
+        windowSizeClass = windowSizeClass,
     ) { padding: PaddingValues ->
         Column(
             modifier = Modifier

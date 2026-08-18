@@ -25,6 +25,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.t2v.R
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.t2v.app.AppContainer
 import com.t2v.data.SegmentEntity
 import com.t2v.ui.components.AudioPlaybackBar
@@ -41,12 +42,14 @@ fun ReviewScreen(
     nav: NavController,
     audiobookId: Long,
     vm: ReviewViewModel = viewModel(factory = ReviewViewModelFactory(LocalContext.current, audiobookId)),
+    windowSizeClass: WindowSizeClass? = null,
 ) {
     val state by vm.state.collectAsState()
     LTVScaffold(
         nav = nav,
         title = stringResource(R.string.review_title),
         onBack = { nav.popBackStack() },
+        windowSizeClass = windowSizeClass,
     ) { padding: PaddingValues ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),

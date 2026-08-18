@@ -4,6 +4,20 @@
 
 ## ✅ Сделано
 
+### v0.2.1 (2026-08-19)
+- [x] **MusicGen ARM64 smoke-test** — 3 инструментальных теста прошли на
+      устройстве R5CN30LJS4W (26 сек). `markSmokeTested()` записан.
+- [x] **ElevenLabs clone UI fix** — JSON-парсинг `voice_id` и `name`
+      исправлен (`.jsonPrimitive.content`).
+- [x] **Background downloads (WorkManager)** — `ModelDownloadWorker`:
+      загрузка моделей выживает уход с экрана, прогресс через `WorkInfo`.
+- [x] **Tablet-адаптация** — `NavigationRail` для Medium/Expanded экранов
+      через `WindowSizeClass`.
+- [x] **Voice gallery sync** — `VoiceGallerySync` с GitHub-каталогом и
+      офлайн-кэшем.
+- [x] **UI-тесты** — `RoutesTest`, `TimelineViewTest`, `ElevenLabsTtsEngineTest`,
+      `ModelDownloadWorkerTest`, `VoiceGallerySyncTest` (26 новых тестов).
+
 ### v0.1.0 (2026-07-23)
 - [x] Структура Gradle-проекта (Kotlin DSL, AGP 8.5, Kotlin 1.9.24).
 - [x] Манифест с разрешениями для TTS, файлов, ffmpeg.
@@ -82,13 +96,10 @@
       клипов (реализовано в `GenerationScreen`, LaunchedEffect на
       `audioTagClips`).
 
-## 🚧 В работе (v0.2.0 → v0.3.0)
+## 🚧 В работе (v0.2.1 → v0.3.0)
 
 ### Сейчас
 
-- [ ] **MusicGen смоук-тест на устройстве** — реальный экспорт .tflite под
-      ARM64, скачивание через `HuggingFaceRepository`, проверка WAV + SHA-256,
-      `markSmokeTested()`. До этого MusicGen не выбирается в UI.
 - [ ] **sherpa-onnx TTS с клонированием голоса** — sherpa-onnx Android
       runtime уже подключён, нужна модель (PocketTTS / ZipVoice / XTTS-v2
       sherpa-onnx fork) + UI для reference audio. Кандидаты:
@@ -98,18 +109,17 @@
 
 ### Дальше (v0.3.0+)
 
-- [ ] Voice gallery sync (GitHub каталог).
+- [ ] Voice gallery sync UI (VoiceGallerySync готов, нужен экран).
 - [ ] Полный timeline-микшер (мульти-трек waveform, drag/trim/split,
       визуальный playhead).
-- [ ] Background downloads через WorkManager.
+- [ ] Background downloads UI (ModelDownloadWorker готов, нужен экран очереди).
 - [ ] SRT/ASS-экспорт через UI.
-- [ ] Tablet-адаптация (adaptive layout, two-pane).
+- [ ] Tablet-адаптация контента (two-pane layouts для editor/review).
 - [ ] Auto-TTS (распознавание языка текста).
 - [ ] Material You dynamic colors.
 - [ ] UI-тесты (Compose UI Test).
 - [ ] Расширенные правила нормализации.
 - [ ] Шаринг аудиокниги (Android Share Intent).
-- [ ] ElevenLabs Instant Voice Clone — починить UI (сейчас не реагирует).
 
 ## 🛣 Дальше (v0.4.0+ — после доделки приложения)
 

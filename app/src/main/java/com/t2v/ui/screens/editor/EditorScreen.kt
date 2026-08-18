@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.t2v.R
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.t2v.ui.components.LTVScaffold
 import kotlinx.coroutines.launch
 
@@ -38,6 +39,7 @@ import kotlinx.coroutines.launch
 fun EditorScreen(
     nav: NavController,
     vm: EditorViewModel = viewModel(factory = EditorViewModelFactory(LocalContext.current)),
+    windowSizeClass: WindowSizeClass? = null,
 ) {
     val state by vm.state.collectAsState()
     val scope = rememberCoroutineScope()
@@ -55,6 +57,7 @@ fun EditorScreen(
     LTVScaffold(
         nav = nav,
         title = stringResource(R.string.nav_editor),
+        windowSizeClass = windowSizeClass,
     ) { padding: PaddingValues ->
         Column(
             modifier = Modifier

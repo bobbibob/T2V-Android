@@ -2,6 +2,34 @@
 
 Все значимые изменения в T2V документируются здесь.
 
+## [Unreleased] - 2026-08-19
+
+### Fixed
+- **ElevenLabs clone UI**: JSON-парсинг `voice_id` и `name` в `listVoices()` и
+  `cloneVoice()` использует `.jsonPrimitive.content` вместо сломанного
+  `.toString().trim('"')`, которое возвращало JSON-представление с кавычками,
+  а не само значение. Клонирование голоса теперь работает корректно.
+
+### Added
+- **MusicGen ARM64 smoke-test пройден**: 3 инструментальных теста на
+  устройстве R5CN30LJS4W (text_encoder, decoder step-0 golden tokens,
+  full pipeline → EnCodec → PCM WAV). 26 секунд. `markSmokeTested()` записан.
+- **Background downloads через WorkManager**: `ModelDownloadWorker`
+  (CoroutineWorker) — загрузка моделей из каталога выживает уход пользователя
+  с экрана Models и рекреацию процесса. Прогресс наблюдается через
+  `getWorkInfosByTagFlow` → обновляется в UI.
+- **Tablet-адаптация**: `LTVScaffold` переключается между `BottomNavBar`
+  (Compact) и `NavigationRail` (Medium/Expanded) по `WindowSizeClass`.
+  Добавлена зависимость `material3-window-size-class`. Все 9 экранов
+  принимают опциональный `windowSizeClass` параметр.
+- **Voice gallery sync**: `VoiceGallerySync` — синхронизация каталога голосов
+  из GitHub-репозитория `bobbibob/T2V-VoiceGallery` с офлайн-кэшем.
+  Заменяет `VoiceCatalogStub`.
+- **JVM-тесты**: `ElevenLabsTtsEngineTest` (5 тестов парсинга JSON),
+  `ModelDownloadWorkerTest` (4 теста констант), `RoutesTest` (3 теста),
+  `TimelineViewTest` (6 тестов clipDurationMs), `VoiceGallerySyncTest`
+  (8 тестов парсинга каталога).
+
 ## [Unreleased] - 2026-08-12
 
 ### Fixed

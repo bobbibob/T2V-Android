@@ -25,6 +25,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.t2v.R
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.t2v.app.AppContainer
 import com.t2v.data.ProjectEntity
 import com.t2v.ui.components.LTVScaffold
@@ -38,11 +39,13 @@ import kotlinx.coroutines.launch
 fun ProjectsScreen(
     nav: NavController,
     vm: ProjectsViewModel = viewModel(factory = ProjectsViewModelFactory(LocalContext.current)),
+    windowSizeClass: WindowSizeClass? = null,
 ) {
     val state by vm.state.collectAsState()
     LTVScaffold(
         nav = nav,
         title = stringResource(R.string.nav_projects),
+        windowSizeClass = windowSizeClass,
     ) { padding: PaddingValues ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),

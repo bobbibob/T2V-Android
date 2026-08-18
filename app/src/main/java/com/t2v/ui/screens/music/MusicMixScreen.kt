@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.t2v.R
 import com.t2v.app.AppContainer
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.t2v.core.audio.AudioMixSettings
 import com.t2v.core.audio.FFmpegBridge
 import com.t2v.ui.components.LTVScaffold
@@ -46,6 +47,7 @@ fun MusicMixScreen(
     nav: NavController,
     audiobookId: Long,
     vm: MusicMixViewModel = viewModel(factory = MusicMixViewModelFactory(LocalContext.current, audiobookId)),
+    windowSizeClass: WindowSizeClass? = null,
 ) {
     val state by vm.state.collectAsState()
     val scope = rememberCoroutineScope()
@@ -58,6 +60,7 @@ fun MusicMixScreen(
         nav = nav,
         title = stringResource(R.string.mix_title),
         onBack = { nav.popBackStack() },
+        windowSizeClass = windowSizeClass,
     ) { padding: PaddingValues ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),

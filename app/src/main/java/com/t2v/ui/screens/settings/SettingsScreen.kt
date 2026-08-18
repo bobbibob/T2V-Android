@@ -37,6 +37,7 @@ import com.t2v.R
 import com.t2v.app.AppContainer
 import com.t2v.data.AudiobookEntity
 import com.t2v.data.ProjectEntity
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.t2v.data.Settings
 import com.t2v.data.SettingsRepository
 import com.t2v.tts.VoiceConfig
@@ -53,6 +54,7 @@ import kotlinx.serialization.json.Json
 fun SettingsScreen(
     nav: NavController,
     vm: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(LocalContext.current)),
+    windowSizeClass: WindowSizeClass? = null,
 ) {
     val state by vm.state.collectAsState()
     val context = LocalContext.current
@@ -67,6 +69,7 @@ fun SettingsScreen(
     LTVScaffold(
         nav = nav,
         title = stringResource(R.string.nav_settings),
+        windowSizeClass = windowSizeClass,
     ) { padding: PaddingValues ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),

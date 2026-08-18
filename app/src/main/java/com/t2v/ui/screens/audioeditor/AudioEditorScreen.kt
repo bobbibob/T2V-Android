@@ -49,6 +49,7 @@ import com.t2v.data.AudioTrackEntity
 import com.t2v.data.ChapterExportEntity
 import com.t2v.generators.Generator
 import com.t2v.generators.GeneratorCategory
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.t2v.ui.components.LTVScaffold
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,6 +65,7 @@ fun AudioEditorScreen(
     vm: AudioEditorViewModel = viewModel(
         factory = AudioEditorViewModelFactory(LocalContext.current, audiobookId),
     ),
+    windowSizeClass: WindowSizeClass? = null,
 ) {
     val state by vm.state.collectAsState()
     val musicPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
@@ -75,7 +77,7 @@ fun AudioEditorScreen(
     androidx.compose.runtime.DisposableEffect(Unit) {
         onDispose { vm.stopPreview() }
     }
-    LTVScaffold(nav, "Audio editor", onBack = { nav.popBackStack() }) { padding: PaddingValues ->
+    LTVScaffold(nav, "Audio editor", onBack = { nav.popBackStack() }, windowSizeClass = windowSizeClass) { padding: PaddingValues ->
         Column(
             Modifier.fillMaxSize().padding(padding).padding(12.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
