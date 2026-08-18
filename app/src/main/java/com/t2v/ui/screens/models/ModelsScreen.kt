@@ -74,6 +74,7 @@ import java.util.Locale
 fun ModelsScreen(
     nav: NavController,
     vm: ModelsViewModel = viewModel(factory = ModelsViewModelFactory(LocalContext.current)),
+    windowSizeClass: androidx.compose.material3.windowsizeclass.WindowSizeClass? = null,
 ) {
     val state by vm.state.collectAsState()
     var selectedTab by remember { mutableStateOf(ModelTab.Voice) }
@@ -107,6 +108,7 @@ fun ModelsScreen(
         nav = nav,
         title = stringResource(R.string.nav_models),
         onBack = { nav.popBackStack() },
+        windowSizeClass = windowSizeClass,
     ) { padding: PaddingValues ->
         Column(
             modifier = Modifier

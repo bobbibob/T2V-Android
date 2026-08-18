@@ -1,5 +1,6 @@
 package com.t2v.ui.navigation
 
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -34,29 +35,33 @@ object Routes {
 }
 
 @Composable
-fun LTVNavHost(nav: NavHostController, startDestination: String = Routes.Editor) {
+fun LTVNavHost(
+    nav: NavHostController,
+    startDestination: String = Routes.Editor,
+    windowSizeClass: WindowSizeClass? = null,
+) {
     NavHost(navController = nav, startDestination = startDestination) {
         composable(Routes.Onboarding) { OnboardingScreen(nav) }
-        composable(Routes.Editor) { EditorScreen(nav) }
-        composable(Routes.Projects) { ProjectsScreen(nav) }
+        composable(Routes.Editor) { EditorScreen(nav, windowSizeClass = windowSizeClass) }
+        composable(Routes.Projects) { ProjectsScreen(nav, windowSizeClass = windowSizeClass) }
         composable(Routes.Generation) { entry ->
             val id = entry.arguments?.getString("projectId")?.toLongOrNull() ?: 0L
-            GenerationScreen(nav, id)
+            GenerationScreen(nav, id, windowSizeClass = windowSizeClass)
         }
         composable(Routes.Review) { entry ->
             val id = entry.arguments?.getString("audiobookId")?.toLongOrNull() ?: 0L
-            ReviewScreen(nav, id)
+            ReviewScreen(nav, id, windowSizeClass = windowSizeClass)
         }
         composable(Routes.MusicMix) { entry ->
             val id = entry.arguments?.getString("audiobookId")?.toLongOrNull() ?: 0L
-            MusicMixScreen(nav, id)
+            MusicMixScreen(nav, id, windowSizeClass = windowSizeClass)
         }
         composable(Routes.AudioEditor) { entry ->
             val id = entry.arguments?.getString("audiobookId")?.toLongOrNull() ?: 0L
-            AudioEditorScreen(nav, id)
+            AudioEditorScreen(nav, id, windowSizeClass = windowSizeClass)
         }
-        composable(Routes.Voices) { VoicesScreen(nav) }
-        composable(Routes.Models) { ModelsScreen(nav) }
-        composable(Routes.Settings) { SettingsScreen(nav) }
+        composable(Routes.Voices) { VoicesScreen(nav, windowSizeClass = windowSizeClass) }
+        composable(Routes.Models) { ModelsScreen(nav, windowSizeClass = windowSizeClass) }
+        composable(Routes.Settings) { SettingsScreen(nav, windowSizeClass = windowSizeClass) }
     }
 }
