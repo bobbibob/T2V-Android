@@ -412,6 +412,10 @@ class GenerationViewModel(
             engineId = engineId,
             outputDir = outputDir,
         )
+        if (result.isFailure) {
+            val errMsg = result.exceptionOrNull()?.message ?: "Неизвестная ошибка генерации"
+            _state.update { it.copy(error = errMsg, isRunning = false) }
+        }
         val finalStatus = if (result.isSuccess) "completed" else "failed"
         val segments = db.segments().listForAudiobook(audiobookId)
         db.audiobooks().update(
@@ -430,7 +434,12 @@ class GenerationViewModel(
                 orderIndex = db.audiobooks().byId(audiobookId)?.orderIndex ?: 0,
             ),
         )
-        _state.update { it.copy(audiobookId = audiobookId) }
+        _state.update {
+            it.copy(
+                audiobookId = audiobookId,
+                error = result.exceptionOrNull()?.message,
+            )
+        }
     }
 }
 
