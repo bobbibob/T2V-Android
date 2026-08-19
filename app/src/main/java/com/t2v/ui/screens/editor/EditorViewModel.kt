@@ -23,6 +23,7 @@ data class EditorState(
     val text: String = "",
     val splitMode: String = "safe_chunks",
     val chunkCount: Int = 0,
+    val markupToolbar: Boolean = true,
 )
 
 class EditorViewModel(private val context: Context) : ViewModel() {

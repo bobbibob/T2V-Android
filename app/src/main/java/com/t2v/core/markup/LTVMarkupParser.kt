@@ -41,7 +41,136 @@ class LTVMarkupParser(
     private val musicTagPattern = Regex("""<music>([\s\S]+?)</music>""")
     private val sfxTagPattern = Regex("""<sfx>([\s\S]+?)</sfx>""")
 
+    /**
+     * Inline expression tags: `<whisper>text</whisper>`, `<emotion sad>text</emotion>`.
+     * These are expanded into open-command → text → close-command before the
+     * main {{...}} parser runs, so the rest of the pipeline is unchanged.
+     *
+     * Example: `Привет <whisper>Сергей, я устала</whisper> пойдем`
+     * Expands to: `Привет {{delivery whisper}} Сергей, я устала {{reset delivery}} пойдем`
+     *
+     * Self-closing tags like `<breath/>` expand to `{{breath}}`.
+     * Nesting works: `<whisper><emotion sad>текст</emotion></whisper>`
+     * expands with proper reset order.
+     */
+    private fun expandInlineTags(input: String): String {
+        if (!input.contains('<')) return input
+
+        // Find all inline tag matches (open + close) and sort by position.
+        // We process them in order, tracking a stack of open tags so that
+        // nesting resets the inner tag before the outer one.
+        data class TagMatch(
+            val offset: Int,
+            val isClose: Boolean,
+            val tagName: String,
+            val arg: String,
+            val end: Int,
+        )
+
+        val matches = mutableListOf<TagMatch>()
+        for (m in InlineTags.openPattern.findAll(input)) {
+            val name = m.groupValues[1]
+            if (name.lowercase() in InlineTags.allOpenTags) {
+                val selfClosing = m.value.endsWith("/>")
+                val arg = m.groupValues.getOrNull(2)?.trim().orEmpty()
+                matches += TagMatch(m.range.first, false, name, arg, m.range.last + 1)
+                if (selfClosing) {
+                    // <breath/> → insert open + close immediately
+                    matches += TagMatch(m.range.last, true, name, "", m.range.last)
+                }
+            }
+        }
+        for (m in InlineTags.closePattern.findAll(input)) {
+            val name = m.groupValues[1]
+            if (name.lowercase() in InlineTags.allOpenTags) {
+                matches += TagMatch(m.range.first, true, name, "", m.range.last + 1)
+            }
+        }
+        matches.sortBy { it.offset }
+
+        if (matches.isEmpty()) return input
+
+        // Build expanded text, replacing tags with {{...}} commands.
+        val out = StringBuilder()
+        var cursor = 0
+        val openStack = ArrayDeque<String>()
+
+        for (tag in matches) {
+            // Text before this tag
+            out.append(input, cursor, tag.offset)
+
+            if (!tag.isClose) {
+                // Open tag → emit {{command}}
+                val cmd = InlineTags.openCommand(tag.tagName, tag.arg, tag.offset)
+                if (cmd != null) {
+                    out.append("{{")
+                    out.append(commandText(cmd))
+                    out.append("}}")
+                }
+                openStack.addLast(tag.tagName.lowercase())
+                // If self-closing, also emit the reset immediately
+                if (tag.end == tag.offset + 1 || tag.end <= tag.offset + 2) {
+                    val close = InlineTags.closeCommand(tag.tagName, tag.offset)
+                    if (close != null) {
+                        out.append("{{")
+                        out.append(commandText(close))
+                        out.append("}}")
+                    }
+                    openStack.removeLast()
+                }
+            } else {
+                // Close tag → emit {{reset target}}
+                // Close in reverse nesting order
+                val lowerName = tag.tagName.lowercase()
+                val close = InlineTags.closeCommand(tag.tagName, tag.offset)
+                if (close != null) {
+                    out.append("{{")
+                    out.append(commandText(close))
+                    out.append("}}")
+                }
+                // Remove from stack (find matching open, remove it and anything above)
+                val idx = openStack.indexOfLast { it == lowerName }
+                if (idx >= 0) {
+                    while (openStack.size > idx) openStack.removeLast()
+                }
+            }
+            cursor = tag.end
+        }
+        out.append(input, cursor, input.length)
+
+        // Close any unclosed tags
+        if (openStack.isNotEmpty()) {
+            for (name in openStack.reversed()) {
+                val close = InlineTags.closeCommand(name, input.length)
+                if (close != null) {
+                    out.append("{{")
+                    out.append(commandText(close))
+                    out.append("}}")
+                }
+            }
+        }
+
+        return out.toString()
+    }
+
+    /** Converts a [MarkupCommand] back to its {{...}} text form for inline expansion. */
+    private fun commandText(cmd: MarkupCommand): String = when (cmd) {
+        is MarkupCommand.Emotion -> "emotion ${cmd.value}"
+        is MarkupCommand.Delivery -> "delivery ${cmd.value}"
+        is MarkupCommand.Speed -> "speed ${cmd.value}"
+        is MarkupCommand.Volume -> "volume ${cmd.value}"
+        is MarkupCommand.Pitch -> "pitch ${cmd.value}"
+        is MarkupCommand.Emphasis -> "emphasis ${cmd.value}"
+        is MarkupCommand.VocalCue -> cmd.cue + (if (cmd.detail.isNotBlank()) " ${cmd.detail}" else "")
+        is MarkupCommand.Reset -> "reset ${cmd.target}"
+        else -> ""
+    }
+
     fun parse(input: String): ParsedMarkup {
+        // Expand inline tags (<whisper>...</whisper>) into {{...}} commands
+        // before the main parser processes them.
+        val expanded = expandInlineTags(input)
+
         val commands = mutableListOf<MarkupCommand>()
         val plainBuilder = StringBuilder()
         var cursor = 0
@@ -49,19 +178,19 @@ class LTVMarkupParser(
 
         // Сначала вырежем все команды и заменим их на маркер-плейсхолдер.
         // Это позволяет TextProcessor потом работать с "чистым" текстом.
-        for (match in commandPattern.findAll(input)) {
+        for (match in commandPattern.findAll(expanded)) {
             val inside = match.groupValues[1]
             val cmd = parseCommand(inside.trim(), match.range.first) ?: continue
             commands += cmd
 
             // Вставляем разделитель чанков, чтобы сохранить позицию
-            plainBuilder.append(input, cursor, match.range.first)
+            plainBuilder.append(expanded, cursor, match.range.first)
             plainBuilder.append(PLACEHOLDER)
             cursor = match.range.last + 1
 
             state = applyCommand(state, cmd)
         }
-        plainBuilder.append(input, cursor, input.length)
+        plainBuilder.append(expanded, cursor, expanded.length)
         val plain = plainBuilder.toString()
 
         // Заменяем плейсхолдеры на настоящие \n для переноса в чанки.
