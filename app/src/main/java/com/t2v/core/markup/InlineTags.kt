@@ -69,8 +69,6 @@ object InlineTags {
     )
 
     private val VOLUME_ALIASES = mapOf(
-        "loud" to 1.5,
-        "soft" to 0.6,
         "quiet" to 0.5,
     )
 

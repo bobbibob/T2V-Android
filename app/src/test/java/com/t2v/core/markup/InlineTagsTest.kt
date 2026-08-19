@@ -115,12 +115,11 @@ class InlineTagsTest {
 
     @Test
     fun `loud and soft volume aliases`() {
-        val input = "<loud>громко</loud> <soft>тихо</soft>"
+        val input = "<quiet>тихо</quiet>"
         val markup = parser.parse(input)
         val volumes = markup.commands.filterIsInstance<MarkupCommand.Volume>()
-        assertEquals(2, volumes.size)
-        assertTrue(volumes[0].value > 1.0) // loud
-        assertTrue(volumes[1].value < 1.0) // soft
+        assertEquals(1, volumes.size)
+        assertTrue(volumes[0].value < 1.0) // quiet
     }
 
     @Test

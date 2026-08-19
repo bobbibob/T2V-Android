@@ -65,6 +65,7 @@ class LTVMarkupParser(
             val tagName: String,
             val arg: String,
             val end: Int,
+            val selfClosing: Boolean = false,
         )
 
         val matches = mutableListOf<TagMatch>()
@@ -73,10 +74,10 @@ class LTVMarkupParser(
             if (name.lowercase() in InlineTags.allOpenTags) {
                 val selfClosing = m.value.endsWith("/>")
                 val arg = m.groupValues.getOrNull(2)?.trim().orEmpty()
-                matches += TagMatch(m.range.first, false, name, arg, m.range.last + 1)
+                matches += TagMatch(m.range.first, false, name, arg, m.range.last + 1, selfClosing)
                 if (selfClosing) {
-                    // <breath/> → insert open + close immediately
-                    matches += TagMatch(m.range.last, true, name, "", m.range.last)
+                    // <breath/> → insert close immediately after open
+                    matches += TagMatch(m.range.last + 1, true, name, "", m.range.last + 1)
                 }
             }
         }
@@ -109,14 +110,14 @@ class LTVMarkupParser(
                 }
                 openStack.addLast(tag.tagName.lowercase())
                 // If self-closing, also emit the reset immediately
-                if (tag.end == tag.offset + 1 || tag.end <= tag.offset + 2) {
+                if (tag.selfClosing) {
                     val close = InlineTags.closeCommand(tag.tagName, tag.offset)
                     if (close != null) {
                         out.append("{{")
                         out.append(commandText(close))
                         out.append("}}")
                     }
-                    openStack.removeLast()
+                    if (openStack.isNotEmpty()) openStack.removeLast()
                 }
             } else {
                 // Close tag → emit {{reset target}}
