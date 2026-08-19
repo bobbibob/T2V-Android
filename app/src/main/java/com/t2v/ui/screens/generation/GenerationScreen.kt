@@ -362,13 +362,32 @@ class GenerationViewModel(
     }
 
     suspend fun startGeneration(context: android.content.Context) {
+        val engineId = _state.value.selectedEngine
+        if (engineId.isBlank()) {
+            _state.update { it.copy(error = "Выберите движок перед генерацией") }
+            return
+        }
+        val project = db.projects().byId(projectId) ?: run {
+            _state.update { it.copy(error = "Проект не найден") }
+            return
+        }
         val s = settings.flow.first()
-        val project = db.projects().byId(projectId) ?: return
         val voices = if (project.voiceConfigJson.isNotBlank()) {
             runCatching { Json.decodeFromString(VoiceConfig.serializer(), project.voiceConfigJson) }
                 .getOrDefault(VoiceConfig.EMPTY)
         } else VoiceConfig.EMPTY
-        val engineId = _state.value.selectedEngine
+
+        // Verify engine is actually available (has API key etc.)
+        val engineInfo = registry.allEngineInfos().firstOrNull { it.id == engineId }
+        if (engineInfo == null) {
+            _state.update { it.copy(error = "Движок «$engineId» не найден. Выберите другой.") }
+            return
+        }
+        if (!runCatching { registry.get(engineId).isAvailable() }.getOrDefault(false)) {
+            _state.update { it.copy(error = "Движок «${engineInfo.displayName}» недоступен. Проверьте API-ключ в Настройках.") }
+            return
+        }
+
         val v = voices.copy(
             speed = _state.value.speed,
             voice = s.voiceId.ifEmpty { voices.voice },
