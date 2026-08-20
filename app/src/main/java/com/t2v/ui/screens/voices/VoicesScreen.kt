@@ -138,6 +138,53 @@ fun VoicesScreen(
                         )
                     }
                 }
+
+                // Voice Gallery section
+                if (state.galleryEntries.isNotEmpty()) {
+                    item {
+                        Text(
+                            "Каталог голосов",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 16.dp),
+                        )
+                    }
+                    state.galleryEntries.forEach { entry ->
+                        item(key = "gallery-${entry.voice.id}") {
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(
+                                        entry.voice.displayName,
+                                        style = MaterialTheme.typography.titleSmall,
+                                    )
+                                    Text(
+                                        "${entry.voice.engineId} · ${entry.voice.language}" +
+                                            (if (entry.voice.gender.isNotBlank()) " · ${entry.voice.gender}" else ""),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                    if (entry.voice.tags.isNotEmpty()) {
+                                        Text(
+                                            entry.voice.tags.joinToString(", "),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                    if (entry.downloadModelId != null) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                _state.update { it.copy(message = "Скачайте модель «$entry.downloadModelId» на экране «Модели»") }
+                                            },
+                                        ) { Text("Скачать модель") }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (state.galleryLoading) {
+                    item { Text("Загрузка каталога голосов…", style = MaterialTheme.typography.bodySmall) }
+                }
             }
         }
     }
@@ -277,11 +324,16 @@ data class VoicesState(
     val cloning: Boolean = false,
     val message: String? = null,
     val error: String? = null,
+    val galleryEntries: List<com.t2v.tts.catalog.VoiceGallerySync.GalleryEntry> = emptyList(),
+    val galleryLoading: Boolean = false,
 )
 
 class VoicesViewModel(private val context: android.content.Context) : ViewModel() {
     private val registry = AppContainer.registry(context)
     private val settings = AppContainer.settings(context)
+    private val gallerySync = com.t2v.tts.catalog.VoiceGallerySync(
+        cacheDir = java.io.File(context.cacheDir, "voice-gallery"),
+    )
     private val _state = MutableStateFlow(VoicesState())
     val state: StateFlow<VoicesState> = _state.asStateFlow()
     init {
@@ -291,6 +343,26 @@ class VoicesViewModel(private val context: android.content.Context) : ViewModel(
             }
         }
         loadVoices()
+        loadGallery()
+    }
+
+    /** Load cached gallery first, then sync from GitHub. */
+    private fun loadGallery() {
+        viewModelScope.launch {
+            // Cached (offline)
+            val cached = gallerySync.loadCachedCatalog()
+            if (cached.isNotEmpty()) {
+                _state.update { it.copy(galleryEntries = cached) }
+            }
+            // Sync from GitHub
+            _state.update { it.copy(galleryLoading = true) }
+            val synced = gallerySync.sync()
+            if (synced.isNotEmpty()) {
+                _state.update { it.copy(galleryEntries = synced, galleryLoading = false) }
+            } else {
+                _state.update { it.copy(galleryLoading = false) }
+            }
+        }
     }
 
     private fun loadVoices() {
