@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +62,9 @@ fun TimelineView(
     playheadMs: Long,
     pixelsPerSecond: Float,
     onClipTap: (AudioTrackKind, AudioEditClip) -> Unit,
+    onClipDrag: (AudioTrackKind, AudioEditClip, deltaMs: Long) -> Unit = { _, _, _ -> },
+    onClipTrimStart: (AudioTrackKind, AudioEditClip, deltaMs: Long) -> Unit = { _, _, _ -> },
+    onClipTrimEnd: (AudioTrackKind, AudioEditClip, deltaMs: Long) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -103,6 +107,9 @@ fun TimelineView(
                     pixelsPerSecond = pixelsPerSecond,
                     selectedClipId = selectedClipId,
                     onClipTap = { clip -> onClipTap(AudioTrackKind.Voice, clip) },
+                    onClipDrag = { clip, delta -> onClipDrag(AudioTrackKind.Voice, clip, delta) },
+                    onClipTrimStart = { clip, delta -> onClipTrimStart(AudioTrackKind.Voice, clip, delta) },
+                    onClipTrimEnd = { clip, delta -> onClipTrimEnd(AudioTrackKind.Voice, clip, delta) },
                 )
                 Spacer(Modifier.height(laneGap))
                 TrackLane(
@@ -114,6 +121,9 @@ fun TimelineView(
                     pixelsPerSecond = pixelsPerSecond,
                     selectedClipId = selectedClipId,
                     onClipTap = { clip -> onClipTap(AudioTrackKind.Music, clip) },
+                    onClipDrag = { clip, delta -> onClipDrag(AudioTrackKind.Music, clip, delta) },
+                    onClipTrimStart = { clip, delta -> onClipTrimStart(AudioTrackKind.Music, clip, delta) },
+                    onClipTrimEnd = { clip, delta -> onClipTrimEnd(AudioTrackKind.Music, clip, delta) },
                 )
                 Spacer(Modifier.height(laneGap))
                 TrackLane(
@@ -125,6 +135,9 @@ fun TimelineView(
                     pixelsPerSecond = pixelsPerSecond,
                     selectedClipId = selectedClipId,
                     onClipTap = { clip -> onClipTap(AudioTrackKind.Sound, clip) },
+                    onClipDrag = { clip, delta -> onClipDrag(AudioTrackKind.Sound, clip, delta) },
+                    onClipTrimStart = { clip, delta -> onClipTrimStart(AudioTrackKind.Sound, clip, delta) },
+                    onClipTrimEnd = { clip, delta -> onClipTrimEnd(AudioTrackKind.Sound, clip, delta) },
                 )
             }
 
@@ -222,6 +235,9 @@ private fun TrackLane(
     pixelsPerSecond: Float,
     selectedClipId: String?,
     onClipTap: (AudioEditClip) -> Unit,
+    onClipDrag: (AudioEditClip, deltaMs: Long) -> Unit,
+    onClipTrimStart: (AudioEditClip, deltaMs: Long) -> Unit,
+    onClipTrimEnd: (AudioEditClip, deltaMs: Long) -> Unit,
 ) {
     val density = LocalDensity.current
     val laneBg = MaterialTheme.colorScheme.surfaceVariant
@@ -252,7 +268,7 @@ private fun TrackLane(
             val durationMs = clipDurationMs(clip)
             val clipWidthPx = with(density) {
                 ((durationMs / 1000f) * pixelsPerSecond).toDp()
-            }.coerceAtLeast(12.dp) // minimum visible width
+            }.coerceAtLeast(12.dp)
             val isSelected = clip.id == selectedClipId
 
             val envelope = remember(clip.id) { loadEnvelope(clip) }
@@ -270,6 +286,16 @@ private fun TrackLane(
                     )
                     .pointerInput(clip.id) {
                         detectTapGestures { onClipTap(clip) }
+                    }
+                    .pointerInput(clip.id) {
+                        detectDragGestures(
+                            onDragStart = { },
+                            onDragEnd = { },
+                        ) { change, dragAmount ->
+                            change.consume()
+                            val deltaMs = (dragAmount.x / pixelsPerSecond * 1000f).toLong()
+                            if (deltaMs != 0L) onClipDrag(clip, deltaMs)
+                        }
                     },
             ) {
                 androidx.compose.foundation.Canvas(
@@ -289,6 +315,40 @@ private fun TrackLane(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.offset(x = 3.dp, y = 2.dp),
                 )
+
+                // Trim handles (only on selected clip)
+                if (isSelected) {
+                    // Left trim handle
+                    Box(
+                        modifier = Modifier
+                            .offset(x = 0.dp, y = 0.dp)
+                            .width(12.dp)
+                            .height(with(density) { laneHeight - 22.dp })
+                            .background(Color.White.copy(alpha = 0.7f))
+                            .pointerInput(clip.id) {
+                                detectDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    val deltaMs = (dragAmount.x / pixelsPerSecond * 1000f).toLong()
+                                    if (deltaMs != 0L) onClipTrimStart(clip, deltaMs)
+                                }
+                            },
+                    )
+                    // Right trim handle
+                    Box(
+                        modifier = Modifier
+                            .offset(x = clipWidthPx - 12.dp, y = 0.dp)
+                            .width(12.dp)
+                            .height(with(density) { laneHeight - 22.dp })
+                            .background(Color.White.copy(alpha = 0.7f))
+                            .pointerInput(clip.id) {
+                                detectDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    val deltaMs = (dragAmount.x / pixelsPerSecond * 1000f).toLong()
+                                    if (deltaMs != 0L) onClipTrimEnd(clip, deltaMs)
+                                }
+                            },
+                    )
+                }
             }
         }
     }

@@ -102,6 +102,9 @@ fun AudioEditorScreen(
                     playheadMs = state.playheadMs,
                     pixelsPerSecond = state.pixelsPerSecond,
                     onClipTap = vm::selectClip,
+                    onClipDrag = { kind, clip, delta -> vm.dragClip(kind, clip.id, delta) },
+                    onClipTrimStart = { kind, clip, delta -> vm.trimStart(kind, clip.id, delta) },
+                    onClipTrimEnd = { kind, clip, delta -> vm.trimEnd(kind, clip.id, delta) },
                 )
             }
 
@@ -578,6 +581,25 @@ class AudioEditorViewModel(
 
     fun setTimelineStart(kind: AudioTrackKind, id: String, value: Long) =
         updateClip(kind, id) { it.copy(timelineStartMs = value.coerceAtLeast(0)) }
+
+    /** Drag clip horizontally by deltaMs (positive = later, negative = earlier). */
+    fun dragClip(kind: AudioTrackKind, id: String, deltaMs: Long) =
+        updateClip(kind, id) { it.copy(timelineStartMs = (it.timelineStartMs + deltaMs).coerceAtLeast(0)) }
+
+    /** Trim clip start: move startMs by deltaMs (positive = trim from beginning). */
+    fun trimStart(kind: AudioTrackKind, id: String, deltaMs: Long) =
+        updateClip(kind, id) {
+            val newStart = (it.startMs + deltaMs).coerceAtLeast(0)
+            val newTimeline = (it.timelineStartMs + deltaMs).coerceAtLeast(0)
+            it.copy(startMs = newStart, timelineStartMs = newTimeline)
+        }
+
+    /** Trim clip end: move endMs by deltaMs (positive = extend, negative = trim). */
+    fun trimEnd(kind: AudioTrackKind, id: String, deltaMs: Long) =
+        updateClip(kind, id) {
+            val newEnd = if (it.endMs > 0) (it.endMs + deltaMs).coerceAtLeast(it.startMs + 100) else 0
+            it.copy(endMs = newEnd)
+        }
 
     fun setStart(kind: AudioTrackKind, id: String, value: Long) =
         updateClip(kind, id) { it.copy(startMs = value.coerceAtLeast(0)) }
