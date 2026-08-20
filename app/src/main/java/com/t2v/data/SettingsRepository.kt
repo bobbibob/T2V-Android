@@ -55,6 +55,8 @@ class SettingsRepository(private val context: Context) {
         val TTS_MODE = stringPreferencesKey("tts_mode")
         /** Persisted URI returned by ACTION_OPEN_DOCUMENT_TREE. */
         val MODELS_TREE_URI = stringPreferencesKey("models_tree_uri")
+        /** Persisted project output folder URI (ACTION_OPEN_DOCUMENT_TREE). */
+        val PROJECT_TREE_URI = stringPreferencesKey("project_tree_uri")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
 
         // engine configs
@@ -105,6 +107,7 @@ class SettingsRepository(private val context: Context) {
         selectedSoundGenerator = "",
         ttsMode = "",
         modelsTreeUri = "",
+        projectTreeUri = "",
         onboardingCompleted = false,
         engines = emptyMap(),
     )
@@ -142,6 +145,7 @@ class SettingsRepository(private val context: Context) {
         selectedSoundGenerator = this[Keys.SELECTED_SOUND_GENERATOR] ?: "",
         ttsMode = this[Keys.TTS_MODE] ?: "",
         modelsTreeUri = this[Keys.MODELS_TREE_URI] ?: "",
+        projectTreeUri = this[Keys.PROJECT_TREE_URI] ?: "",
         onboardingCompleted = this[Keys.ONBOARDING_COMPLETED] ?: false,
         engines = mapOf(
             "openai" to mapOf("apiKey" to (this[Keys.OPENAI_KEY] ?: "")),
@@ -188,6 +192,7 @@ data class Settings(
     val selectedSoundGenerator: String,
     val ttsMode: String,
     val modelsTreeUri: String,
+    val projectTreeUri: String,
     val onboardingCompleted: Boolean,
     val engines: Map<String, Map<String, String>>,
 )

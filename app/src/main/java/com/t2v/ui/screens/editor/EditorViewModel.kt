@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.t2v.app.AppContainer
 import com.t2v.core.text.TextProcessor
 import com.t2v.data.ProjectEntity
+import com.t2v.data.SettingsRepository
 import com.t2v.tts.VoiceConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,9 +36,24 @@ class EditorViewModel(private val context: Context) : ViewModel() {
     private val _state = MutableStateFlow(EditorState())
     val state: StateFlow<EditorState> = _state.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            settings.flow.collect { value ->
+                if (_state.value.outputTreeUri.isBlank()) {
+                    _state.update { it.copy(outputTreeUri = value.projectTreeUri) }
+                }
+            }
+        }
+    }
+
     fun setTitle(value: String) = _state.update { it.copy(title = value) }
     fun setAuthor(value: String) = _state.update { it.copy(author = value) }
-    fun setOutputTreeUri(value: String) = _state.update { it.copy(outputTreeUri = value) }
+    fun setOutputTreeUri(value: String) {
+        _state.update { it.copy(outputTreeUri = value) }
+        viewModelScope.launch {
+            settings.update { it[SettingsRepository.Keys.PROJECT_TREE_URI] = value }
+        }
+    }
     fun setText(value: String) {
         _state.update { it.copy(text = value, chunkCount = estimateChunkCount(value)) }
     }
