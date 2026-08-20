@@ -174,7 +174,7 @@ fun VoicesScreen(
                                     if (entry.downloadModelId != null) {
                                         OutlinedButton(
                                             onClick = {
-                                                _state.update { it.copy(message = "Скачайте модель «$entry.downloadModelId» на экране «Модели»") }
+                                                vm.showGalleryMessage("Скачайте модель «${entry.downloadModelId}» на экране «Модели»")
                                             },
                                         ) { Text("Скачать модель") }
                                     }
@@ -383,6 +383,8 @@ class VoicesViewModel(private val context: android.content.Context) : ViewModel(
     }
 
     fun selectVoice(voice: VoiceInfo) {
+
+    fun showGalleryMessage(msg: String) = _state.update { it.copy(message = msg) }
         viewModelScope.launch {
             settings.update {
                 it[SettingsRepository.Keys.VOICE_ID] = voice.id
