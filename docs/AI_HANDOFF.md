@@ -1,9 +1,13 @@
 # T2V: инструкция и журнал передачи для ИИ
 
-Последнее обновление: 2026-07-28
-Рабочая ветка разработки: `codex/models-download` (последний зелёный CI 30338815715, head `984e208a`)
-Стабильная база: `codex/audio-production` (последний зелёный CI 30328757706, head `8fc42a0`)
+Последнее обновление: 2026-08-21
+Рабочая ветка разработки: `main` (последний зелёный CI 32422853217, head `115d96fb`)
+Стабильная база: `main` (все коммиты на main, `feature/offline-work` отстаёт на 21 коммит и устарел)
 Устройство для проверок: `R5CN30LJS4W` (Samsung, ADB, разблокировано)
+
+> **СТАРОЕ (2026-07-28) — больше неактуально**: `codex/models-download` (30338815715 / `984e208a`),
+> `codex/audio-production` (30328757706 / `8fc42a0`), базовый коммит `e052f1c`. Эти ветки
+> больше не рабочие (см. переименование пути 2026-08-21).
 
 Этот файл — главный оперативный контекст для следующего ИИ-агента. Его нужно
 обновлять после каждого существенного изменения архитектуры, поведения,
@@ -45,11 +49,12 @@
 
 ## Репозиторий и Git
 
-- Локальный путь: `/Users/robertbiktimirov/Downloads/books/t2v`
+- Локальный путь: `/Users/robertbiktimirov/hermes_agents/t2v/T2V-Android`
+  (ранее: `/Users/robertbiktimirov/Downloads/books/t2v` — переименовано 2026-08-21)
 - GitHub: `bobbibob/T2V-Android`
-- Текущая ветка: `codex/models-download`
-- Стабильная база: `codex/audio-production`
-- Базовый проверенный коммит: `e052f1c feat: add Russian voices and voice cloning`.
+- Текущая ветка: `main` (HEAD `115d96fb`, чистая, совпадает с `origin/main`)
+- Устаревшие ветки: `codex/models-download`, `codex/audio-production`, `feature/offline-work`
+- Ветка `feature/offline-work` отстаёт от main на 21 коммит и считается устаревшей.
 
 ## Что реально работает на устройстве (по состоянию на 2026-07-28)
 
@@ -136,15 +141,34 @@
   только Kokoro (для остальных `downloadModelFromCatalog()` пока пишет
   «Загрузка для X пока не подключена»).
 
-## Сводка коммитов текущей сессии (codex/models-download)
+## Сводка коммитов v0.2.1 (2026-08-19/20)
 
-1. **`647dcf8`** — feat(models): refactor download UI; DownloadableModelCard + catalog plumbing
-2. **`ccd817e`** — fix(models): make InfoTarget internal so DownloadableModelCard compiles
-3. **`0f86301`** — fix(models): make InfoTarget/ModelTab public (no modifier)
-4. **`984e208`** — fix(models): onInfo is () -> Unit, not (InfoTarget) -> Unit
+> Сессия `codex/models-download` уже не релевантна — она была до фикса
+> `VoicesScreen` и слияния v0.2.1. Текущая работа идёт на `main`.
 
-Все четыре CI run (30337677737, 30338039614, 30338445304, 30338815715) —
-последний зелёный. APK 43.5 МБ скачан через GitHub API + curl.
+Ключевые коммиты текущей сессии (HEAD → старее):
+
+- **`115d96f`** fix: add default for projectTreeUri to keep SettingsUiState compiling
+- **`c65dac8`** fix(editor): persist project output folder URI in DataStore
+- **`ba103c9`** fix: move showGalleryMessage outside selectVoice function body
+- **`cc6ff93`** fix: unresolved _state in VoicesScreen gallery button — use vm method
+- **`50349ea`** feat(voices): voice gallery sync UI in VoicesScreen
+- **`e0cd9ac`** feat(timeline): drag clips + trim handles
+- **`fd42b74`** docs: update STATUS + add RULES (Boss is chief, WS connection)
+- **`31cab1d`** fix: show generation error in UI instead of silent failure
+- **`f7569e6`** fix: generation crash — validate engine before pipeline.generate
+- **`a1665ad`** feat(markup): inline paired expression tags + context-aware toolbar
+- **`b577cc5`** feat(auto-tts): integrate AutoTtsDetector + AutoVoicePicker
+- **`346631d`** feat(review): SRT/ASS subtitle export + Share Intent
+- **`2544cfe`** feat(theme): Material You dynamic colors (Android 12+)
+- **`083fdda`** feat(workmanager): background model downloads via ModelDownloadWorker
+- **`f90ce00`** feat(tablet): adaptive NavigationRail for large screens
+- **`3e9649e`** feat(voice-gallery): VoiceGallerySync with GitHub catalog + JVM tests
+- **`8c3a72a`** merge: v0.2.1 — MusicGen smoke-test, WorkManager, tablet, voice gallery, ElevenLabs fix
+
+Последний зелёный CI: **32422853217** (run от 2026-08-20T22:08:11Z, head `115d96fb`,
+test + build + release ✅). APK можно скачать:
+`gh run download 32422853217 -n app-debug` (или curl workaround для больших артефактов).
 
 ## План работы (что делаем сейчас)
 
@@ -188,7 +212,7 @@ sqlite3 -header -separator '|' /tmp/t2v.db \
   "SELECT * FROM audio_clips WHERE trackId LIKE '%-music' OR trackId LIKE '%-sound';"
 
 # Скачать APK последнего зелёного CI
-gh run list --workflow android.yml --branch codex/models-download --limit 1 \
+gh run list --workflow android.yml --branch main --limit 1 \
   --json databaseId,conclusion --jq '.[] | select(.conclusion=="success") | .databaseId'
 # затем: gh run download <id> -n app-debug
 
@@ -202,13 +226,33 @@ adb -s R5CN30LJS4W shell am start -n com.t2v.debug/com.t2v.ui.MainActivity
 
 ## Известные баги и долги (issue list)
 
-1. **Kokoro зависает** на >3к символов (audiobook #3 не завершился)
-2. **`timelineStartMs=0`** для всех `<music>/<sfx>` клипов
-3. **ElevenLabs clone UI** не реагирует на «Создать клон»
-4. **`VoicesScreen.kt`** нестабилен — ломался 4 раза, revert'нут
+> Состояние на 2026-08-21 (после v0.2.1). Пункты с ✅ ниже уже починены
+> в коммитах 2026-08-19/20, но остаются здесь для истории, чтобы следующий
+> агент не пытался чинить их снова.
+
+1. ✅ **Kokoro зависает** на >3к символов (audiobook #3 не завершился) —
+   починено `KokoroTtsEngine.splitLongText()` (≤1200 символов на кусок)
+2. ✅ **`timelineStartMs=0`** для всех `<music>/<sfx>` клипов —
+   починено переносом `AudioTagInserter.insert()` после цикла voice-сегментов
+3. ✅ **ElevenLabs clone UI** не реагировал на «Создать клон» —
+   починен JSON-парсинг `voice_id` и `name` через `.jsonPrimitive.content`
+4. ⚠️ **`VoicesScreen.kt`** был нестабилен — ломался несколько раз при
+   добавлении галереи голосов, теперь компилируется (ci 32422853217 ✅),
+   но требует осторожности при будущих правках (использует явные `vm`-методы,
+   не сырые `_state`).
 5. **APK download через `gh run download`** обрывается на 30 МБ — workaround:
    curl + `https://api.github.com/repos/.../actions/artifacts/<id>/zip` с `-C -`
-6. **Sherpa-onnx cloning model** не выбрана — нужен аудит готовых моделей
+6. 📋 **Sherpa-onnx cloning model** не выбрана — нужен аудит готовых моделей
+   (PocketTTS / ZipVoice / XTTS-v2) с реальным ARM64 smoke-test
+7. 📋 **MusicGen ONNX** — генератор зарегистрирован, но нужен реальный
+   LiteRT-совместимый .tflite и ARM64 smoke-test, прежде чем `isAvailable()=true`
+8. 📋 **FFmpeg интеграция** — бинарь собирается через
+   `tools/build_ffmpeg_android.sh` в CI и кладётся в `jniLibs/arm64-v8a/libffmpeg_exec.so`,
+   `FFmpegBridge` читает его из `nativeLibraryDir` и валидирует через
+   `ffmpeg -version`. На устройстве R5CN30LJS4W не проверено end-to-end.
+9. 📋 **Kokoro модель** — README в `app/src/main/assets/voices/kokoro/README.md`
+   описывает ожидаемые файлы (`kokoro.onnx`, `voices.bin`, `tokens.txt`),
+   но реальных файлов в репо нет (модель скачивается пользователем из приложения).
 
 ## Как обновлять этот файл
 
