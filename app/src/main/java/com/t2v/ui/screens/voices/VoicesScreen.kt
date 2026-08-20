@@ -382,9 +382,9 @@ class VoicesViewModel(private val context: android.content.Context) : ViewModel(
         }
     }
 
-    fun selectVoice(voice: VoiceInfo) {
-
     fun showGalleryMessage(msg: String) = _state.update { it.copy(message = msg) }
+
+    fun selectVoice(voice: VoiceInfo) {
         viewModelScope.launch {
             settings.update {
                 it[SettingsRepository.Keys.VOICE_ID] = voice.id
