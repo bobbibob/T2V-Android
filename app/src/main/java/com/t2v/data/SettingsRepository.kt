@@ -192,7 +192,7 @@ data class Settings(
     val selectedSoundGenerator: String,
     val ttsMode: String,
     val modelsTreeUri: String,
-    val projectTreeUri: String,
+    val projectTreeUri: String = "",
     val onboardingCompleted: Boolean,
     val engines: Map<String, Map<String, String>>,
 )
